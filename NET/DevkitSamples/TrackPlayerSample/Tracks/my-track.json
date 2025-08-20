@@ -1,0 +1,82 @@
+{
+
+  "chunks": [
+    {
+      "props": [
+        {
+          "address": 1,
+          "ledMode": "GlobalManual",
+          "globalLed": {
+            "red": 120
+          }
+        },
+        {
+          "address": 2,
+          "ledMode": "GlobalManual",
+          "globalLed": {
+            "red": 120
+          }
+        },
+        {
+          "address": 3,
+          "ledMode": "GlobalManual",
+          "globalLed": {
+            "red": 120
+          }
+        }
+
+      ],
+      "delay": 1000
+    },
+    {
+      "props": [
+        {
+          "address": 1,
+          "globalLed": {
+            "green": 120
+          }
+        },
+        {
+          "address": 2,
+          "globalLed": {
+            "green": 120
+          }
+        }
+      ],
+      "delay": 1000
+    },
+    {
+      "props": [
+        {
+          "address": 1,
+          "globalLed": {
+            "blue": 120
+          }
+        },
+        {
+          "address": 2,
+          "globalLed": {
+            "blue": 120
+          }
+        }
+
+      ],
+      "delay": 1000
+    },
+    {
+      "props": [
+        {
+          "address": 1,
+          "clear": true
+        },
+        {
+          "address": 2,
+          "clear": true
+        }
+      ],
+
+      "delay": 1
+    }
+  ]
+}
+  

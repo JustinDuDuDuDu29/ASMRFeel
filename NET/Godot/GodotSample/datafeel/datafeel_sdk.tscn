@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://76cpeynrowca"]
+
+[ext_resource type="Script" path="res://datafeel/DatafeelGodotSdk.cs" id="1_068a4"]
+
+[node name="DatafeelSDK" type="Node"]
+script = ExtResource("1_068a4")

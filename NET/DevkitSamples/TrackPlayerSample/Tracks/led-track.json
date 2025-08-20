@@ -1,0 +1,62 @@
+{
+
+  "chunks": [
+    {
+      "props": [
+        {
+          "Address": 1,
+          "ledMode": "GlobalManual",
+          "globalLed": {
+            "red": 50,
+            "green": 0,
+            "blue": 0
+          }
+        }
+      ],
+      "delay": 1000
+    },
+    {
+      "props": [
+        {
+          "Address": 1,
+          "ledMode": "GlobalManual",
+          "globalLed": {
+            "red": 0,
+            "green": 50,
+            "blue": 0
+          }
+        }
+      ],
+      "delay": 1000
+    },
+    {
+      "props": [
+        {
+          "Address": 1,
+          "ledMode": "GlobalManual",
+          "globalLed": {
+            "red": 0,
+            "green": 0,
+            "blue": 50
+          }
+        }
+      ],
+      "delay": 1000
+    },
+    {
+      "props": [
+        {
+          "Address": 1,
+          "ledMode": "GlobalManual",
+          "globalLed": {
+            "red": 50,
+            "green": 50,
+            "blue": 50
+          }
+        }
+      ],
+      "delay": 1000
+    }
+  ]
+}
+  

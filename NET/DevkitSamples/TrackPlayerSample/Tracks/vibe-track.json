@@ -1,0 +1,16 @@
+{
+  "chunks": [
+    {
+      "props": [
+        {
+          "Address": 1,
+          "vibrationMode": "Sequence",
+          "vibrationSequence": [ 1 ],
+          "vibrationGo": true
+        }
+      ],
+      "delay": 250
+    }
+  ]
+}
+  
