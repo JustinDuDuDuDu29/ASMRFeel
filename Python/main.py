@@ -11,6 +11,7 @@ from time import sleep
 from datafeel.device import Dot, VibrationMode, discover_devices, LedMode, ThermalMode, VibrationWaveforms
 import pyaudio
 from multiprocessing import Pipe, Process, Queue
+from queue import Full, Empty
 
 class AudioHandler(object):
     def __init__(self,q_Audio: Queue, channels: int = 1, sr: int = 16000, window_ms: int = 200):
@@ -72,7 +73,7 @@ class AudioHandler(object):
         self.stream = p.open(format=pyaudio.paFloat32,
                         channels=self.CHANNELS,
                         rate=self.SR,
-                        output_device_index=2,
+                        output_device_index=5,
                         input=False,
                         output=True)
         try:
@@ -101,7 +102,7 @@ class AudioHandler(object):
 def InitDots() -> list[Dot]:
     return discover_devices(4)
     
-def VoiceToVibrateData(ev:Event, q_Audio:Queue, parent_conn:Connection, filePath: str = "", sr: int = 16000, fmin: int = 70, fmax: int = 400, frame_length:int = 2048, hop_length:int = 160, window_ms:int = 200, saveToCSV: bool = False, saveCSVPath: str = "./freq_amp.csv"):
+def VoiceToVibrateData(ev:Event, q_Audio:Queue, parent_conn:Connection, vibrate_queue:Queue, filePath: str = "", sr: int = 16000, fmin: int = 70, fmax: int = 400, frame_length:int = 2048, hop_length:int = 160, window_ms:int = 200, saveToCSV: bool = False, saveCSVPath: str = "./freq_amp.csv"):
     # y, sr = librosa.load(filePath, sr=sr)
     while not ev.is_set():
         y = q_Audio.get()
@@ -145,8 +146,21 @@ def VoiceToVibrateData(ev:Event, q_Audio:Queue, parent_conn:Connection, filePath
 
         print(f'{f0_200ms}, {amp_200ms}')
         parent_conn.send(y)
-        
-        # ---- Stack to 2D array: [freq_hz, amp_0_1] ----
+
+
+        f = float(f0_200ms[-1]) if len(f0_200ms) else 0.0
+        a = float(amp_200ms[-1]) if len(amp_200ms) else 0.0
+        # print(f"f0_200ms: {f0_200ms}, amp_200ms: {amp_200ms}")
+        try:
+            while True:
+                vibrate_queue.get_nowait()
+        except Empty:
+            pass
+
+        try:
+            vibrate_queue.put_nowait((f, a))
+        except Full:
+            pass
 
         if saveToCSV:
             freq_amp_200ms = np.stack([f0_200ms, amp_200ms], axis=1)
@@ -155,51 +169,50 @@ def VoiceToVibrateData(ev:Event, q_Audio:Queue, parent_conn:Connection, filePath
                        comments="", fmt="%.6f,%.6f")
 
 
-def VibrateDataFeel(devices: list[Dot]):
+def VibrateDataFeel(vibrate_queue:Queue):
+    devices = InitDots()
     device = devices[0]
-    # frequency = [100] * 100
+    device.registers.set_vibration_mode(VibrationMode.MANUAL)
 
-    frequency = []
-    with open("./freq_amp_200ms.csv", 'r') as f:
-        lines = f.readlines()
-        for r in lines:
-            r = r.strip().rstrip().split(',')
-            frequency.append([int(float(r[0])),float(r[1])])
+    period = 0.2
+    next_deadline = time.monotonic()
+    last_f, last_a = 0.0, 0.0
+    while True:
+        try:
+            item = vibrate_queue.get(timeout=0.02)
+            f, a = item
+            # Drain any newer items so we act on the latest
+            while True:
+                try:
+                    f, a = vibrate_queue.get_nowait()
+                except Empty:
+                    break
+            last_f, last_a = float(f), float(a)
+        except Empty:
+            # nothing new; keep last_f/last_a
+            pass
 
-    t = 0
-    device.registers.set_vibration_mode(VibrationMode.MANUAL)   
-    a = input("Please input")
-    tt = time.time()
-    for freq in frequency:
-        # print(freq)
-        total = time.time()
-        device.play_frequency(freq[0], freq[1])
-        # if(freq[1] < 0.1):
-        #     device.stop_vibration()
-        #     pass
-        # device.play_frequency(freq[0], freq[1])
-        st = (time.time() - total)
-        sleep(0.2-st)
-        # sleep(0.2)
+        # Actuate
+        t0 = time.monotonic()
+        if last_f > 100:
+            device.play_frequency(int(last_f), last_a)
+        else:
+            device.stop_vibration()
 
-        # t+=st
-        # print(0.1 - (time.time() - total))
-        
-    print(time.time() - tt)
-
-    device.stop_vibration()
-
-    sleep(1)
-
-
+        next_deadline += period
+        rem = next_deadline - time.monotonic()
+        if rem > 0:
+            time.sleep(rem)
 
 
 
 if __name__ == "__main__":
     print("Starting ASMRFeel !")
-
     q_Audio = Queue()
     parent_conn, child_conn = Pipe()
+
+    vibrate_queue = multiprocessing.Queue(maxsize=1)
+
 
     AudioHandler.ListDevice()
 
@@ -210,15 +223,31 @@ if __name__ == "__main__":
     ReadAudioProcess = Process(target=audioHandler.RecordAudio, args=(stopReadAudioProcessEvent, ), daemon=True)
     ReadAudioProcess.start()
 
-    # AudioToDotParamProcess = Process(target=VoiceToVibrateData, args=(q_Audio,), daemon=True) 
-    VoiceToVibrateDataProcess = Process(target=VoiceToVibrateData, args=(stopReadAudioProcessEvent, q_Audio, parent_conn, ), daemon=True) 
+    VoiceToVibrateDataProcess = Process(target=VoiceToVibrateData, args=(stopReadAudioProcessEvent, q_Audio, parent_conn, vibrate_queue), daemon=True)
     VoiceToVibrateDataProcess.start()
     
-    PlayAudioProcess = Process(target=audioHandler1.PlayAudio, args=(stopReadAudioProcessEvent, child_conn, ), daemon=True) 
+    PlayAudioProcess = Process(target=audioHandler1.PlayAudio, args=(stopReadAudioProcessEvent, child_conn, ), daemon=True)
     PlayAudioProcess.start()
 
-    
+    VibrateDataFeelProcess = Process(target=VibrateDataFeel, args=(vibrate_queue,), daemon=True)
+    VibrateDataFeelProcess.start()
+
     print("Press q to  exit!")
+    while True:
+        k = input()
+        k = k.lower().strip()
+        if(k == "q"):
+            print("Exiting...")
+            stopReadAudioProcessEvent.set()
+            ReadAudioProcess.join()
+            VoiceToVibrateDataProcess.join()
+            PlayAudioProcess.join()
+            VibrateDataFeelProcess.join()
+            break
+    print("ASMRFeel done.")
+
+    
+    print("Press q to exit!")
     while True:
         k = input()
         k = k.lower().strip()
