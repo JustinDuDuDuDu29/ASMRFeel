@@ -1,9 +1,0 @@
-README.txt
-setup.py
-datafeel/__init__.py
-datafeel/device.py
-datafeel.egg-info/PKG-INFO
-datafeel.egg-info/SOURCES.txt
-datafeel.egg-info/dependency_links.txt
-datafeel.egg-info/requires.txt
-datafeel.egg-info/top_level.txt
