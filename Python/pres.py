@@ -56,6 +56,7 @@ def read_from_serial(stop_evt: Event, q:Queue, port: str, baud: int = 115200):
         try:
             with serial.Serial(port, baudrate=baud, timeout=1) as ser:
                 # Optional: set DTR/RTS here if your device needs it
+                # ser.set_buffer_size(rx_size=12)
                 ser.reset_input_buffer()
                 while not stop_evt.is_set():
                     try:
