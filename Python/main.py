@@ -135,7 +135,7 @@ def VoiceToVibrateData(ev:Event, q_Audio:Queue, parent_conn:Connection, vibrate_
             floor = np.percentile(rms_hist, 10)
             p95g  = np.percentile(rms_hist, 95)
 
-        denom = max(p95g - floor, 1e-8)
+        denom = max(float(p95g - floor), 1e-8)
         amp_10ms = np.clip((rms - floor) / denom, 0.0, 1.0)
 
         # ---- Pool both to 200 ms ----
