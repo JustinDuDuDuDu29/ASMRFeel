@@ -32,6 +32,11 @@ from datafeel.device import Dot, VibrationMode, discover_devices, LedMode, Therm
 # ===================== Config =====================
 
 class Cfg:
+    # Debug
+    DEBUG = True
+    DEBUG_LEVEL = 1             # 1=concise, 2=normal, 3=verbose
+
+    
     SAMPLE_RATE = 16000
     CHANNELS = 1
     CAP_HOP_MS = 10             # Hop = analysis hop
@@ -45,9 +50,17 @@ class Cfg:
     THERM_QUEUE_MAX = 256
     DROP_POLICY = "drop_old"    # "drop_old" or "drop_new"
 
-    # Debug
-    DEBUG = True
-    DEBUG_LEVEL = 3             # 1=concise, 2=normal, 3=verbose
+    DURATION_THRESHOLD = 0.1
+    SMOOTH_STRENGTH = 0.15
+    RMS_GATE = 2e-5
+    EMA_ALPHA = 0.0
+
+
+    NORMAL = 34
+    HOTTEST = 36
+    TONE_THRESHOLD = 0.025
+
+
 
 # ===================== Utils ======================
 
@@ -111,8 +124,7 @@ class ThermCmd:
     seq: int
     pts_ns: int
     duration_ms: int
-    tone_hz: float = 0.0
-    target_temp: float = 0.0  # or normalized level [0..1]
+    tone_smooth: float = 0.0
 
 @dataclass
 class CombinedCmd:
@@ -329,6 +341,45 @@ def dsp_vib_thread():
         q_put(Q_VIB_TO_CMD, vib, Cfg.DROP_POLICY)
 
 def dsp_therm_thread():
+
+    def _hz_to_bin(hz, nfft, sr):
+        return int(np.clip(np.floor(hz/(sr/nfft)), 0, nfft//2))
+
+    def tone_features(frame, sr, nfft=512):
+        w = np.hanning(len(frame))
+        spec = np.fft.rfft(frame*w, n=nfft)
+        mag  = np.abs(spec) + 1e-12
+        pow_ = mag*mag
+        freqs = np.fft.rfftfreq(nfft, d=1.0/sr)
+
+        total = float(np.sum(pow_) + 1e-12)
+
+        centroid_hz = float(np.sum(freqs * mag) / np.sum(mag))
+        centroid_norm = float(np.clip(centroid_hz / (sr/2), 0.0, 1.0))
+        sfm = float(np.exp(np.mean(np.log(mag))) / (np.mean(mag)))
+        hf_bin = _hz_to_bin(3000, nfft, sr)
+        hf_ratio = float(np.sum(pow_[hf_bin:]) / total)
+
+        lf_max = _hz_to_bin(2000, nfft, sr)
+        mh_max = _hz_to_bin(8000, nfft, sr)
+        lf   = float(np.sum(pow_[:lf_max]) + 1e-12)
+        midh = float(np.sum(pow_[lf_max:mh_max]) + 1e-12)
+        harmonicity = float(lf / (lf + midh))  # 越大=越有聲/諧波清楚
+
+        return centroid_hz, centroid_norm, sfm, hf_ratio, harmonicity
+
+
+    hop_length = int(Cfg.SAMPLE_RATE * (Cfg.CAP_HOP_MS / 1000.0))
+    hop_s = hop_length / float(Cfg.SAMPLE_RATE)
+
+    if Cfg.SMOOTH_STRENGTH <= 0:
+        ema_alpha = 1.0
+    else:
+        ema_alpha = 1.0 - np.exp(-hop_s / Cfg.SMOOTH_STRENGTH)
+
+    tone_mix = 0.0
+    tone_smooth = 0.0
+
     hop_ms = Cfg.CAP_HOP_MS
     while not STOP.is_set():
         try:
@@ -337,34 +388,40 @@ def dsp_therm_thread():
             continue
 
         t0 = now_ns()
-        # crude zero-crossing tone estimator (placeholder)
-        tone_hz = 0.0
+        tone_smooth = 0.0
         if fr.data:
             try:
+                # arr = np.frombuffer(fr.data, dtype=np.float32)
+                # s = np.sign(arr)
+                # crossings = np.where(np.diff(s) != 0)[0].size
+                # est_f0 = crossings * (Cfg.SAMPLE_RATE / (2.0 * len(arr) + 1e-9))
+                # tone_hz = float(est_f0)
                 arr = np.frombuffer(fr.data, dtype=np.float32)
-                s = np.sign(arr)
-                crossings = np.where(np.diff(s) != 0)[0].size
-                est_f0 = crossings * (Cfg.SAMPLE_RATE / (2.0 * len(arr) + 1e-9))
-                tone_hz = float(est_f0)
+                rms = float(np.sqrt(np.mean(arr*arr)))
+                if rms < Cfg.RMS_GATE:
+                    tone_mix = 0.0
+                else:
+                    _, cn, sfm, hfr, harm = tone_features(arr, Cfg.SAMPLE_RATE)
+                    tone_mix = 0.45*cn + 0.25*sfm + 0.20*hfr + 0.10*(1.0 - harm)
+                    tone_mix = float(np.clip(tone_mix, 0.0, 1.0))
+
+                tone_smooth = (1.0 - ema_alpha) * tone_smooth + ema_alpha * tone_mix
+                tone_smooth = float(tone_smooth)
             except Exception:
                 pass
 
-        lvl = 0.0
-        if tone_hz > 0:
-            lvl = max(0.0, min(1.0, (tone_hz - 100.0) / 300.0))
         t1 = now_ns()
 
         wait_ms = ns_to_ms(t0 - fr.pts_ns)
         proc_ms = ns_to_ms(t1 - t0)
         dprint(3, f"[DSP-T] seq={fr.seq} wait_ms={wait_ms:.3f} proc_ms={proc_ms:.3f} "
-                  f"tone={tone_hz:.1f} lvl={lvl:.2f} Qtherm_in={Q_AUDIO_TO_THERM.qsize()}")
+                  f"tone={tone_smooth:.1f} Qtherm_in={Q_AUDIO_TO_THERM.qsize()}")
 
         therm = ThermCmd(
             seq=fr.seq,
             pts_ns=fr.pts_ns,
             duration_ms=hop_ms,
-            tone_hz=tone_hz,
-            target_temp=lvl
+            tone_smooth=tone_smooth,
         )
         q_put(Q_THERM_TO_CMD, therm, Cfg.DROP_POLICY)
 
@@ -382,11 +439,21 @@ class Commander:
         self.max_therm_delta = 0.05
         self._last_sent_pts: Optional[int] = None
 
+        self.state = 0
+        self.last_trigger = time.monotonic()
+        self.lastCool_trigger = time.monotonic()
+        self.startWarm = False
+        self.startCool = False
+        self.tone_smooth = 0.0
+
+        self._last_seq_sent = None
+
     def start(self):
         try:
             devices = InitDots()
             self.device = devices[0]
             self.device.registers.set_vibration_mode(VibrationMode.MANUAL)
+            self.device.registers.set_thermal_mode(ThermalMode.MANUAL)
             dprint(1, f"[Cmd  ] Dot initialized: {self.device}")
         except Exception as e:
             dprint(1, "[Cmd  ] Device open failed, using stub:", e)
@@ -465,7 +532,12 @@ class Commander:
                 dprint(2, f"[Cmd  ] seq={seq} age_ms={age_ms:.3f} until_due_ms={until_due_ms:.3f} "
                           f"Qout(v,t)={len(pending_vib)},{len(pending_therm)}")
 
+
+                send_start = now_ns()
                 self._send_combined(comb)
+                send_ms = ns_to_ms(now_ns() - send_start)
+                dprint(1, f"[Cmd  ] send_ms={send_ms:.3f}ms Qin(v,t)={Q_VIB_TO_CMD.qsize()},{Q_THERM_TO_CMD.qsize()}")
+                
                 self.last_tx_ns = now_ns()
 
             time.sleep(0.001)
@@ -477,10 +549,10 @@ class Commander:
                 comb.vib.amp = self.prev_vib_amp + math.copysign(self.max_amp_delta, delta)
             self.prev_vib_amp = comb.vib.amp
         if comb.therm:
-            delta = comb.therm.target_temp - self.prev_therm_lvl
+            delta = comb.therm.tone_smooth - self.prev_therm_lvl
             if abs(delta) > self.max_therm_delta:
-                comb.therm.target_temp = self.prev_therm_lvl + math.copysign(self.max_therm_delta, delta)
-            self.prev_therm_lvl = comb.therm.target_temp
+                comb.therm.tone_smooth = self.prev_therm_lvl + math.copysign(self.max_therm_delta, delta)
+            self.prev_therm_lvl = comb.therm.tone_smooth
 
     def _send_combined(self, comb: CombinedCmd):
         payload = {
@@ -488,14 +560,50 @@ class Commander:
             "pts_ms": round(ns_to_ms(comb.pts_ns), 3),
             "dur_ms": comb.duration_ms,
             "vib_amp": comb.vib.amp if comb.vib else None,
-            "therm_lvl": comb.therm.target_temp if comb.therm else None,
+            "therm_lvl": comb.therm.tone_smooth if comb.therm else None,
         }
         line = (str(payload) + "\n").encode("utf-8")
 
         if self.device:
             try:
+                dprint(1, f"[Cmd  ] seq={comb.seq} vib_amp={comb.vib.amp:.3f} therm_lvl={comb.therm.tone_smooth:.3f}")
                 self.device.play_frequency(70, comb.vib.amp)
-                self.device.activate_thermal_intensity_control((-comb.therm.target_temp * 2.0) + 1.0 if comb.therm else 0.0)
+                
+                if abs(self.device.registers.get_skin_temperature() - Cfg.NORMAL) < 1:
+                    # print("Stop Thermal...")
+                    state = 0
+                    self.device.registers.set_thermal_intensity(0.0)
+                elif self.device.registers.get_skin_temperature() >= Cfg.HOTTEST + 2:
+                    state = -1
+                    # print("Force Cooling...")
+                    self.device.registers.set_thermal_intensity(-1.0)
+                elif self.device.registers.get_skin_temperature() < Cfg.NORMAL:
+                    state = 1
+                    # print("Force Return...")
+                    self.device.registers.set_thermal_intensity(1.0)
+                else :
+                    state = 0
+
+                # Thermal Actuation
+                if comb.therm.tone_smooth >= Cfg.TONE_THRESHOLD:
+                    if self.startWarm == False:
+                        self.last_trigger = time.monotonic()
+                        self.startWarm = True
+                    elif time.monotonic() - self.last_trigger >= Cfg.DURATION_THRESHOLD:
+                        if self.device.registers.get_thermal_power() <= 0.01 and state == 0:
+                            print("Heating...")
+                            self.device.registers.set_thermal_intensity(1.0)
+                elif comb.therm.tone_smooth < Cfg.TONE_THRESHOLD:
+                    if self.startCool == False:
+                        self.lastCool_trigger = time.monotonic()
+                        self.startCool = True
+                    elif time.monotonic() - self.lastCool_trigger >= Cfg.DURATION_THRESHOLD*10:
+                        self.startWarm = False
+                        self.startCool = False
+                        if self.device.registers.get_thermal_power() >= 0.5 and state == 0:
+                            print("Cooling...")
+                            self.device.registers.set_thermal_intensity(-1.0)
+
             except Exception as e:
                 dprint(1, "[Cmd  ] device write error:", e)
         # Print stub or mirror even if serial present (debug)
