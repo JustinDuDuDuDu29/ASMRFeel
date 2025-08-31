@@ -249,8 +249,8 @@ class Dot:
                 vals.append(val & 0xFFFF)
                 vals.append(val >> 16)
 
-            lsw = int(int(ThermalMode.TEMPERATURE_TARGET) % 65535)
-            msw = int(int(ThermalMode.TEMPERATURE_TARGET) / 65535)
+            lsw = int(int(ThermalMode.MANUAL) % 65535)
+            msw = int(int(ThermalMode.MANUAL) / 65535)
             # lsw, msw = _to_Long_Int(int(ThermalMode.MANUAL),littleEndianSwap = True)
             # vals.append(0)
             # vals.append(0)
@@ -287,6 +287,7 @@ class Dot:
             vals.append(vi & 0xFFFF)
             vals.append(vi >> 16)
 
+            print(vals)
             
 
             self.dev.write_registers(registeraddress = self.LED_INDIVIDUAL_MANUAL_0, values=vals)
