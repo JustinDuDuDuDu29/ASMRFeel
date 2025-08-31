@@ -6,7 +6,7 @@ int Mux1_State[8] = { 0 };
 unsigned long previousMillis = 0;  // will store last time LED was updated
 
 // constants won't change :
-const long interval = 110;  // interval at which to blink (milliseconds)
+const long interval = 70;  // interval at which to blink (milliseconds)
 
 void setup() {
   pinMode(pin_Out_S0, OUTPUT);

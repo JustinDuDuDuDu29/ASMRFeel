@@ -5,25 +5,27 @@ from serial.tools import list_ports
 from time import sleep
 from multiprocessing.synchronize import Event
 from multiprocessing import Pipe, Process, Queue
-from DataFeelCenter import DataFeelCenter
+from DataFeelCenter import DataFeelCenter, token
 from concurrent.futures import ThreadPoolExecutor
 from datafeel.device import VibrationMode, discover_devices, LedMode, ThermalMode, VibrationWaveforms
+import random
 
 
 def candy(dfc, method, args):
     getattr(dfc, method)(*args)
 
+
+
 def worker(stop_evt:Event, q_cmd: Queue):
     dfc = DataFeelCenter(numOfDots=4)  # Owns devices
-    # with ThreadPoolExecutor() as tpe:
+    
     while not stop_evt.is_set():
         try:
             while not q_cmd.empty():
-                cmd = q_cmd.get()
+                cmd = q_cmd.get_nowait()
                 if not cmd:
                     return
                 method, args = cmd
-                # tpe.submit(candy, dfc, method, args)
 
                 getattr(dfc, method)(*args)
 
@@ -50,21 +52,151 @@ def choose_port(default=None):
 
 def pressureLED(stop_evt: Event, q:Queue, q_cmd:Queue):
     
+    ledFlag = False 
+    ledFlag1 = False 
+    vibFlag = False 
     # device.registers.set_led_mode(LedMode.INDIVIDUAL_MANUAL)
     while not stop_evt.is_set():
         d = q.get()
         d = d.split(",")
 
+        led1 = []
+        led2 = []
+        led3 = []
+        led4 = []
+
+
+        t0 = token(superDotID = 0)
+        t1 = token(superDotID = 1)
+        t2 = token(superDotID = 2)
+        t3 = token(superDotID = 3)
+
+        
         for i, val in enumerate(d):
             if int(val)>60:
-                # device.registers.set_individual_led(i, 255, 0, 0)
-                q_cmd.put(("led_no_timing", (0, i, 255, 0, 0)))
-                q_cmd.put(("led_no_timing", (1, i, 255, 0, 0)))
-            else:
-                q_cmd.put(("led_no_timing", (0, i, 0, 255, 0)))
-                q_cmd.put(("led_no_timing", (1, i, 0, 255, 0)))
+                vibFlag = False
+                t0.vibFrequency = 100
+                t0.vibIntensity = random.uniform(0.5, 1.0)
+                t1.vibFrequency = 100
+                t1.vibIntensity = random.uniform(0.5, 1.0)
+                t2.vibFrequency = 100
+                t2.vibIntensity = random.uniform(0.5, 1.0)
+                t3.vibFrequency = 100
+                t3.vibIntensity = random.uniform(0.5, 1.0)
+                break;
+        else:
+            if not vibFlag:
+                t0.vibFrequency = 0 
+                t0.vibIntensity = 0
+                t1.vibFrequency = 0
+                t1.vibIntensity = 0
+                t2.vibFrequency = 0
+                t2.vibIntensity = 0
+                t3.vibFrequency = 0
+                t3.vibIntensity = 0
+                vibFlag = True
 
-        print(f"size of Q is: {q_cmd.qsize()}")
+
+        # LED Example
+        for i, val in enumerate(d):
+            if int(val)>60:
+                led1.append([random.randint(0,255), random.randint(0,255), random.randint(0,255)])
+                led2.append([random.randint(0,255), random.randint(0,255), random.randint(0,255)])
+                led3.append([random.randint(0,255), random.randint(0,255), random.randint(0,255)])
+                led4.append([random.randint(0,255), random.randint(0,255), random.randint(0,255)])
+            else:
+                led1.append([0, 0, 0])
+                led2.append([0, 0, 0])
+                led3.append([0, 0, 0])
+                led4.append([0, 0, 0])
+
+
+        t0.ledList = led1
+        t1.ledList = led2
+        t2.ledList = led3
+        t3.ledList = led4
+
+        
+        q_cmd.put_nowait(("useToken", (t0, )))
+        q_cmd.put_nowait(("useToken", (t1, )))
+        q_cmd.put_nowait(("useToken", (t2, )))
+        q_cmd.put_nowait(("useToken", (t3, )))
+
+        # if not ledFlag1:
+        #     q_cmd.put_nowait(("led_Arr_no_timing", (0, led5)))
+        #     q_cmd.put_nowait(("led_Arr_no_timing", (1, led6)))
+        #     q_cmd.put_nowait(("led_Arr_no_timing", (2, led7)))
+        #     q_cmd.put_nowait(("led_Arr_no_timing", (3, led8)))
+        #     ledFlag1 = True
+
+        # for i, val in enumerate(d):
+        #     if int(val)>60:
+        #         vibFlag = False
+        #         q_cmd.put_nowait(("vibrate_no_timeing", (0, 100, random.uniform(0.5, 1.0))))
+        #         q_cmd.put_nowait(("vibrate_no_timeing", (1, 100, random.uniform(0.5, 1.0))))
+        #         q_cmd.put_nowait(("vibrate_no_timeing", (2, 100, random.uniform(0.5, 1.0))))
+        #         q_cmd.put_nowait(("vibrate_no_timeing", (3, 100, random.uniform(0.5, 1.0))))
+        #         break;
+        #     elif i == 7:
+        #         if vibFlag:
+        #             return
+        #         q_cmd.put_nowait(("vibrate_no_timeing", (0, 100, 0)))
+        #         q_cmd.put_nowait(("vibrate_no_timeing", (1, 100, 0)))
+        #         q_cmd.put_nowait(("vibrate_no_timeing", (2, 100, 0)))
+        #         q_cmd.put_nowait(("vibrate_no_timeing", (3, 100, 0)))
+        #         vibFlag = True
+        #
+        #
+        #
+        # # LED Example
+        # for i, val in enumerate(d):
+        #     if int(val)>60:
+        #         led1.append([random.randint(0,255), random.randint(0,255), random.randint(0,255)])
+        #         led2.append([random.randint(0,255), random.randint(0,255), random.randint(0,255)])
+        #         led3.append([random.randint(0,255), random.randint(0,255), random.randint(0,255)])
+        #         led4.append([random.randint(0,255), random.randint(0,255), random.randint(0,255)])
+        #         ledFlag = False
+        #     else:
+        #         led1.append([0, 0, 0])
+        #         led2.append([0, 0, 0])
+        #         led3.append([0, 0, 0])
+        #         led4.append([0, 0, 0])
+        #
+        #
+        # for i, val in enumerate(d):
+        #     if int(val)>60:
+        #         led5.append([random.randint(0,255), random.randint(0,255), random.randint(0,255)])
+        #         led6.append([random.randint(0,255), random.randint(0,255), random.randint(0,255)])
+        #         led7.append([random.randint(0,255), random.randint(0,255), random.randint(0,255)])
+        #         led8.append([random.randint(0,255), random.randint(0,255), random.randint(0,255)])
+        #         ledFlag1 = False
+        #     else:
+        #         led5.append([0, 0, 0])
+        #         led6.append([0, 0, 0])
+        #         led7.append([0, 0, 0])
+        #         led8.append([0, 0, 0])
+        #
+        #
+        #
+        #
+        #
+        #
+        # if not ledFlag:
+        #     q_cmd.put_nowait(("led_Arr_no_timing", (0, led1)))
+        #     q_cmd.put_nowait(("led_Arr_no_timing", (1, led2)))
+        #     q_cmd.put_nowait(("led_Arr_no_timing", (2, led3)))
+        #     q_cmd.put_nowait(("led_Arr_no_timing", (3, led4)))
+        #     ledFlag = True
+        #
+        # if not ledFlag1:
+        #     q_cmd.put_nowait(("led_Arr_no_timing", (0, led5)))
+        #     q_cmd.put_nowait(("led_Arr_no_timing", (1, led6)))
+        #     q_cmd.put_nowait(("led_Arr_no_timing", (2, led7)))
+        #     q_cmd.put_nowait(("led_Arr_no_timing", (3, led8)))
+        #     ledFlag1 = True
+        #
+
+        # print(f"size of Q is: {q_cmd.qsize()}")
                 # device.registers.set_individual_led(i, 0, 0, 0)
 
 
