@@ -1,13 +1,42 @@
+from abc import abstractmethod
 from math import ceil
 import struct
 from time import time
-from typing import List
+from typing import List, Tuple
 import serial
 import serial.tools.list_ports
 import minimalmodbus as modbus
 from enum import IntEnum
 
-def _to_IEEE754(val: int | float | str):
+def _to_Long_Int(val: int, littleEndianSwap: bool = False, swap: bool = False, littleEndian: bool = False) -> Tuple[int, int]:
+    #TODO: Strange, need testing
+
+    res = format(val, '032b')
+
+    a = res[0:8]
+    b = res[8:16]
+    c = res[16:24]
+    d = res[24:32]
+
+    res = d + c + b + a
+
+    if littleEndian:
+        res = a + b + c + d
+        return int(res[0: 16], 2), int(res[16:32], 2)
+        
+    if swap:
+        res = c + d + a + b
+        return int(res[0: 16], 2), int(res[16:32], 2)
+
+    if littleEndianSwap:
+        res = b + a + d + c
+        return int(res[0: 16], 2), int(res[16:32], 2)
+
+    
+    return int(res[0: 16], 2), int(res[16:32], 2)
+
+
+def _to_IEEE754(val: int | float | str) -> int:
     if isinstance(val, str):
        val = float(val) 
     return struct.unpack('>I', struct.pack('>f', val))[0]
@@ -220,11 +249,13 @@ class Dot:
                 vals.append(val & 0xFFFF)
                 vals.append(val >> 16)
 
-            tm = _to_IEEE754(int(ThermalMode.MANUAL))
-            vals.append(0)
-            vals.append(0)
-            # vals.append(tm & 0xFFFF)
-            # vals.append(tm >> 16)
+            lsw = int(int(ThermalMode.TEMPERATURE_TARGET) % 65535)
+            msw = int(int(ThermalMode.TEMPERATURE_TARGET) / 65535)
+            # lsw, msw = _to_Long_Int(int(ThermalMode.MANUAL),littleEndianSwap = True)
+            # vals.append(0)
+            # vals.append(0)
+            vals.append(lsw)
+            vals.append(msw)
 
             ti = _to_IEEE754(therIntensity)
             vals.append(ti & 0xFFFF)
@@ -234,9 +265,17 @@ class Dot:
             vals.append(tt & 0xFFFF)
             vals.append(tt >> 16)
             
-            vm = _to_IEEE754(int(VibrationMode.MANUAL))
-            vals.append(1)
-            vals.append(0)
+
+            lsw = int(int(VibrationMode.MANUAL) % 65535)
+            msw = int(int(VibrationMode.MANUAL) / 65535)
+            # lsw, msw = _to_Long_Int(int(ThermalMode.MANUAL),littleEndianSwap = True)
+            # vals.append(0)
+            # vals.append(0)
+            vals.append(lsw)
+            vals.append(msw)
+            # vm = _to_IEEE754(int(VibrationMode.MANUAL))
+            # vals.append(1)
+            # vals.append(0)
             # vals.append(vm & 0xFFFF)
             # vals.append(vm >> 16)
 
@@ -248,7 +287,6 @@ class Dot:
             vals.append(vi & 0xFFFF)
             vals.append(vi >> 16)
 
-            print(f"{vals}")
             
 
             self.dev.write_registers(registeraddress = self.LED_INDIVIDUAL_MANUAL_0, values=vals)
@@ -286,8 +324,17 @@ class Dot:
 
         def set_thermal_mode(self, mode: ThermalMode):
             """
+            <D-o>
             Set the thermal mode.
             """
+            arr = []
+            v = _to_IEEE754(int(mode))
+            arr.append(v & 0xFFFF)
+            arr.append(v >> 16)
+            self.dev.write_registers(registeraddress=self.THERMAL_MODE,values=arr)
+            
+            
+            
             self.dev.write_long(registeraddress=self.THERMAL_MODE, value=int(mode), signed=False, byteorder=modbus.BYTEORDER_LITTLE_SWAP, number_of_registers=2)   
 
         def get_thermal_mode(self):
