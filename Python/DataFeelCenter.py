@@ -14,9 +14,12 @@ class SuperDot(Dot):
         self.registers.set_vibration_mode(VibrationMode.MANUAL)
         self.registers.set_thermal_mode(ThermalMode.MANUAL)
         self.registers.set_led_mode(LedMode.INDIVIDUAL_MANUAL)
+        self.therBase = self.registers.get_skin_temperature()
+        self.therCurrent = self.registers.get_skin_temperature()
+        self.therTarget: float | None = None
+        self.therIntehsity: float = 0
         self.vibFrequency: float = 0
         self.vibIntensity: float = 0
-        self.therIntehsity: float = 0
         self.ledList: List[List[int]] = [[0,0,0]] * 8
     
 
@@ -30,7 +33,9 @@ class SuperDot(Dot):
 class token:
     superDotID: int | None = None 
     therIntensity: float | None = None 
+    therDiff: float | None = None 
     vibFrequency: float | None = None 
+    vibIntensity: float | None = None 
     vibIntensity: float | None = None 
     ledList: List[List[int]] | None =  None
 
@@ -42,9 +47,18 @@ class DataFeelCenter():
     def useToken(self, token:token):
         if token.superDotID is None:
             return
-        # print(token)
+        print(token)
 
         targetDot = self.superDotArr[token.superDotID]
+
+        if token.therDiff is not None:
+            diff = targetDot.therCurrent - (targetDot.therBase + token.therDiff)
+            if diff < 0.3:
+                token.therIntensity = min(1.0, diff)
+            elif diff > 0.3:
+                token.therIntensity = max(-1.0, -diff)
+            else:
+                token.therIntensity = 0
 
         if token.therIntensity is None:
             token.therIntensity = targetDot.therIntehsity
@@ -62,7 +76,7 @@ class DataFeelCenter():
             token.ledList = targetDot.ledList
         targetDot.ledList = token.ledList
 
-        targetDot.registers.set_all(targetDot.ledList, therIntensity=0, vibFrequency=token.vibFrequency, vibIntensity=token.vibIntensity)
+        targetDot.therCurrent = targetDot.registers.set_all(targetDot.ledList, therIntensity=token.therIntensity, vibFrequency=token.vibFrequency, vibIntensity=token.vibIntensity)
         # if token.ledList is not None:
         #     self.led_Arr_no_timing(token.superDotID, token.ledList) 
         # if token.therIntensity:

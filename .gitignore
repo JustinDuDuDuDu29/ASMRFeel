@@ -400,3 +400,7 @@ NET/DevkitSamples/DatafeelDemo/DatafeelDemo - Backup.csproj
 Python/build
 .python-version
 Python/datafeel.egg-info
+*.wav
+.DS_Store
+.DS_Store?
+

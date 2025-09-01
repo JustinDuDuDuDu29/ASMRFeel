@@ -8,6 +8,9 @@ import serial.tools.list_ports
 import minimalmodbus as modbus
 from enum import IntEnum
 
+def _from_IEEE754(int_val) -> int:
+    return struct.unpack('!f', struct.pack('!I', int_val))[0]
+
 def _to_Long_Int(val: int, littleEndianSwap: bool = False, swap: bool = False, littleEndian: bool = False) -> Tuple[int, int]:
     #TODO: Strange, need testing
 
@@ -242,7 +245,8 @@ class Dot:
             self.dev.serial.stopbits = 1
 
 
-        def set_all(self, ledLists: List[List[int]], therIntensity: float, vibFrequency: float, vibIntensity:float):
+        def set_all(self, ledLists: List[List[int]], therIntensity: float, vibFrequency: float, vibIntensity:float) -> float:
+            print(f"in: {therIntensity}")
             vals = []
             for r, g, b in ledLists:
                 val = (b << 16) | (r << 8) | g 
@@ -257,6 +261,7 @@ class Dot:
             vals.append(lsw)
             vals.append(msw)
 
+            print(therIntensity)
             ti = _to_IEEE754(therIntensity)
             vals.append(ti & 0xFFFF)
             vals.append(ti >> 16)
@@ -288,11 +293,15 @@ class Dot:
             vals.append(vi >> 16)
 
             print(vals)
+
             
+            # self.dev.read_float(self.SINK_TEMP, 3, 2, modbus.BYTEORDER_LITTLE_SWAP)   
 
             self.dev.write_registers(registeraddress = self.LED_INDIVIDUAL_MANUAL_0, values=vals)
+            lsw, msw = self.dev.read_registers(registeraddress = self.SKIN_TEMP, number_of_registers=2)
+            return _from_IEEE754((msw<< 16) + lsw)
+            
 
-            pass
         def get_skin_temperature(self):
             """
             Get the skin temperature in Celsius.
