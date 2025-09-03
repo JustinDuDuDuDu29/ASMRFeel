@@ -246,7 +246,6 @@ class Dot:
 
 
         def set_all(self, ledLists: List[List[int]], therIntensity: float, vibFrequency: float, vibIntensity:float) -> float:
-            # print(f"in: {therIntensity}")
             vals = []
             for r, g, b in ledLists:
                 val = (b << 16) | (r << 8) | g 

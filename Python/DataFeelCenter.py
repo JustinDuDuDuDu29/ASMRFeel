@@ -46,16 +46,15 @@ class DataFeelCenter():
     def useToken(self, token:token):
         if token.superDotID is None:
             return
-        # print(len(self.superDotArr))
 
         targetDot = self.superDotArr[token.superDotID]
 
         if token.therDiff is not None:
             diff = targetDot.therCurrent - (targetDot.therBase + token.therDiff)
-            if diff < 0.3:
-                token.therIntensity = min(1.0, diff)
-            elif diff > 0.3:
+            if diff > 0.2:
                 token.therIntensity = max(-1.0, -diff)
+            elif diff < -0.2:
+                token.therIntensity = min(1.0, abs(diff))
             else:
                 token.therIntensity = 0
 
