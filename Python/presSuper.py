@@ -15,9 +15,9 @@ def candy(dfc, method, args):
 
 def worker(stop_evt:Event, q_cmd: Queue):
     dfc = DataFeelCenter(numOfDots=4)  
-    
+    print("DFC")
     while not stop_evt.is_set():
-        try:
+        # try:
             while not q_cmd.empty():
                 cmd = q_cmd.get_nowait()
                 if not cmd:
@@ -26,10 +26,10 @@ def worker(stop_evt:Event, q_cmd: Queue):
 
                 getattr(dfc, method)(*args)
 
-        except Exception as e:
-            print(f"worker Err! {e}")
-            stop_evt.set()
-            break
+        # except Exception as e:
+        #     print(f"worker Err! {e}")
+        #     stop_evt.set()
+        #     break
 
 def choose_port(default=None):
     ports = list(list_ports.comports())

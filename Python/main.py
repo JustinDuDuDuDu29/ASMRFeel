@@ -1,290 +1,385 @@
 import multiprocessing
-from multiprocessing.connection import Connection
+import sys
+import serial
+from serial.tools import list_ports
 from multiprocessing.synchronize import Event
-from typing import Optional
-from datafeel import device
-import numpy as np
-import librosa
-import scipy.signal as sig
-import time
-from time import sleep
-from datafeel.device import Dot, VibrationMode, discover_devices, LedMode, ThermalMode, VibrationWaveforms
+from multiprocessing import  Process, Queue
+from DataFeelCenter import DataFeelCenter, token
+import random
+
+import queue as pyqueue
 import pyaudio
-from multiprocessing import Pipe, Process, Queue
-from queue import Full, Empty
-from collections import deque
+import time
+import numpy as np
+import matplotlib.pyplot as plt
+import Plot_Window.RollingPlot
 
-class AudioHandler(object):
-    def __init__(self,q_Audio: Queue, channels: int = 1, sr: int = 16000, window_ms: int = 200):
-        self.FORMAT = pyaudio.paFloat32
-        self.CHANNELS = channels 
-        self.SR= sr
-        self.STREAM:Optional[pyaudio.Stream] = None
-        self.TIMELAP = window_ms / 1000.0
-        self.Q_AUDIO = q_Audio
+class Config:
+    INPUT_DEVICE_INDEX = 1
+    OUTPUT_DEVICE_INDEX = 5
+    SAMPLERATE = 16000
+    AUDIO_CHUNK_MS = 70
 
-    @staticmethod
-    def ListDevice():
-        p = pyaudio.PyAudio()
+    AUDIO_PLAYBACK_DELAY_S = 0.5
+
+
+    VIB_OUT_SCALE = 100
+
+
+    THERM_OUT_SCALE = 1
+
+# -------------------- Audio Capture --------------------
+
+def AudioCapture(stop_evt: Event, q_audio_playback: Queue, q_audio_vib: Queue, q_audio_therm: Queue, sr=Config.SAMPLERATE, chunk_ms=Config.AUDIO_CHUNK_MS):
+    """Continuously capture audio in 70 ms frames and put the latest into q_audio."""
+    pa = pyaudio.PyAudio()
+    # print all device
+    for i in range(pa.get_device_count()):
+        info = pa.get_device_info_by_index(i)
+        print(f"Device {i}: {info['name']}")
+    framesize = int(Config.SAMPLERATE * chunk_ms / 1000)
+
+    stream = pa.open(format=pyaudio.paFloat32,
+                     channels=1,
+                     rate=sr,
+                     input=True,
+                     input_device_index=Config.INPUT_DEVICE_INDEX,
+                     frames_per_buffer=framesize)
+
+    while not stop_evt.is_set():
+        data = stream.read(framesize, exception_on_overflow=False)
+        arr = np.frombuffer(data, dtype=np.float32)
         try:
-            for i in range(p.get_device_count()):
-                di = p.get_device_info_by_index(i)
-                max_in  = int(di.get('maxInputChannels')  or 0)
-                max_out = int(di.get('maxOutputChannels') or 0)
-                name    = str(di.get('name') or '')
-                print(f"[{i:2}] {name}  in:{max_in} out:{max_out}")
-        finally:
-            p.terminate()
+            q_audio_playback.put_nowait(arr)
+        except pyqueue.Full:
+            print("q_audio_playback queue is full!!!")
 
-    def RecordAudio(self, ev:Event,frames_per_buffer=1024):
-        p = pyaudio.PyAudio()
-        self.stream = p.open(format=self.FORMAT,
-                             channels=self.CHANNELS,
-                             rate=self.SR,
-                             input=True,
-                             input_device_index=1,
-                             frames_per_buffer=frames_per_buffer,)
-        try: 
-            bytes_per_frame = 4 * self.CHANNELS  # float32
-            target_frames   = int(self.SR * self.TIMELAP)
-            target_bytes    = target_frames * bytes_per_frame
-            buf = bytearray()
-            while (self.stream is not None and self.stream.is_active() and not ev.is_set()): 
-                chunk = self.stream.read(frames_per_buffer, exception_on_overflow=False)
-                buf.extend(chunk)
-                # time.sleep(self.TIMELAP)
-                while len(buf) >= target_bytes:
-                    window_bytes = bytes(buf[:target_bytes])
-                    del buf[:target_bytes]
-                    samples = np.frombuffer(window_bytes, dtype=np.float32)
-                    self.Q_AUDIO.put(samples.copy())  
-
-        finally:
-            try:
-                if self.stream is not None and self.stream.is_active():
-                    self.stream.stop_stream()
-            finally:
-                if self.stream is not None:
-                    self.stream.close()
-                p.terminate()
-                print("finally, the AudioHandler has stopped...")
-    
-    def PlayAudio(self, ev:Event, child_conn: Connection):
-        p = pyaudio.PyAudio()
-        self.stream = p.open(format=pyaudio.paFloat32,
-                        channels=self.CHANNELS,
-                        rate=self.SR,
-                        output_device_index=6,
-                        input=False,
-                        output=True)
         try:
-        # while not q_Audio.empty():
-            while not ev.is_set():
-                if child_conn.poll(0.05):
-                    arr = child_conn.recv()
-                    self.stream.write(arr.astype(np.float32, copy=False).tobytes())
-        finally:
-            try:
-                if self.stream is not None and self.stream.is_active():
-                    self.stream.stop_stream()
-            finally:
-                if self.stream is not None:
-                    self.stream.close()
-                    self.stream = None
-                if p is not None:
-                    p.terminate()
-                print("finally, the AudioHandler has stopped...")
+            q_audio_vib.put_nowait(arr)
+        except pyqueue.Full:
+            print("q_audio_vib queue is full!!!")
 
-    def callback(self, in_data, frame_count, time_info, flag):
-        return (in_data, pyaudio.paContinue)
-
-
-
-def InitDots() -> list[Dot]:
-    return discover_devices(4)
-    
-def VoiceToVibrateData(ev:Event, q_Audio:Queue, parent_conn:Connection, vibrate_queue:Queue, filePath: str = "", sr: int = 16000, fmin: int = 70, fmax: int = 400, frame_length:int = 2048, hop_length:int = 160, window_ms:int = 200, saveToCSV: bool = False, saveCSVPath: str = "./freq_amp.csv"):
-    rms_hist = deque(maxlen=1000)
-
-    while not ev.is_set():
-        y = q_Audio.get()
-        if y.size < frame_length:
-            continue
-
-        # ---- Pitch (10 ms hop) ----
-        f0, voiced_flag, _ = librosa.pyin(
-            y, fmin=fmin, fmax=fmax, sr=sr,
-            frame_length=frame_length, hop_length=hop_length, center=True
-        )
-        f0_hz = np.nan_to_num(f0, nan=0.0)
-        voiced = voiced_flag.astype(bool)
-
-        # ---- RMS @ 10 ms hop (raw units) ----
-        rms = librosa.feature.rms(
-            y=y, frame_length=frame_length, hop_length=hop_length, center=True
-        )[0]
-
-        # --- Update history BEFORE normalization ---
-        rms_hist.extend(rms.tolist())
-
-        # Bootstrap until we have enough history
-        if len(rms_hist) < 100:  # ~1 s
-            floor = np.percentile(rms, 10)
-            p95g  = np.percentile(rms, 95)
-        else:
-            floor = np.percentile(rms_hist, 10)
-            p95g  = np.percentile(rms_hist, 95)
-
-        denom = max(float(p95g - floor), 1e-8)
-        amp_10ms = np.clip((rms - floor) / denom, 0.0, 1.0)
-
-        # ---- Pool both to 200 ms ----
-        hop_ms = (1000 * hop_length) // sr  # ≈10 ms
-        step = max(1, window_ms // hop_ms)
-
-        n_frames = min(len(f0_hz), len(amp_10ms))
-        n_full = (n_frames // step) * step
-        if n_full == 0:
-            continue
-
-        f0_blocks = f0_hz[:n_full].reshape(-1, step)
-        v_blocks  = voiced[:n_full].reshape(-1, step)
-        amp_blocks = amp_10ms[:n_full].reshape(-1, step)
-
-        def agg_f(f_block, v_block):
-            return np.median(f_block[v_block]) if np.any(v_block) else 0.0
-
-        f0_200ms  = np.array([agg_f(fb, vb) for fb, vb in zip(f0_blocks, v_blocks)])
-        amp_200ms = np.median(amp_blocks, axis=1)
-
-        # Light smoothing
-        if len(f0_200ms)  >= 3: f0_200ms  = sig.medfilt(f0_200ms,  kernel_size=3)
-        if len(amp_200ms) >= 3: amp_200ms = sig.medfilt(amp_200ms, kernel_size=3)
-
-        # Gate by voicing: if no voiced frames, set amp = 0
-        voiced_any = np.array([np.any(vb) for vb in v_blocks], dtype=bool)
-        if len(amp_200ms) and not voiced_any[-1]:
-            amp_200ms[-1] = 0.0
-
-        # --- newest 200 ms values ---
-        f = float(f0_200ms[-1])  if len(f0_200ms)  else 0.0
-        a = float(amp_200ms[-1]) if len(amp_200ms) else 0.0
-        print(f"f={f:.1f}Hz a={a:.3f}")
-        # (optional) send audio to playback
         try:
-            parent_conn.send(y)
-        except (BrokenPipeError, EOFError):
+            q_audio_therm.put_nowait(arr)
+        except pyqueue.Full:
+            print("q_audio_therm queue is full!!!")
+
+    stream.stop_stream()
+    stream.close()
+    pa.terminate()
+
+# -------------------- Audio Playback --------------------
+
+def AudioPlayback(stop_evt: Event, q_audio_playback: Queue, playback_delay=Config.AUDIO_PLAYBACK_DELAY_S, sr=Config.SAMPLERATE):
+    """Play audio from q_audio with a delay (default 300ms)."""
+    pa = pyaudio.PyAudio()
+    stream = pa.open(format=pyaudio.paFloat32,
+                     channels=1,
+                     rate=sr,
+                     output=True,
+                     output_device_index=Config.OUTPUT_DEVICE_INDEX)
+
+    buffer = []
+    start_time = time.time()
+
+    while not stop_evt.is_set():
+        try:
+            arr = q_audio_playback.get(timeout=0.05)
+            buffer.append(arr)
+        except pyqueue.Empty:
             pass
 
-        # ---- non-blocking latest-value-wins put ----
+        # Wait until playback_delay has passed
+        if buffer and (time.time() - start_time) > playback_delay:
+            stream.write(buffer.pop(0).tobytes())
+
+    stream.stop_stream()
+    stream.close()
+    pa.terminate()
+
+
+def dsp_vib(stop_evt: Event, q_audio_vib: Queue, q_vib: Queue):
+    """Extract RMS from latest audio and push to q_vib."""
+    while not stop_evt.is_set():
         try:
-            vibrate_queue.put_nowait((f, a))
-        except Full:
+            arr = q_audio_vib.get(timeout=0.1)
+            rms = float(np.sqrt(np.mean(arr**2)))
+            vib_level = rms * Config.VIB_OUT_SCALE
             try:
-                vibrate_queue.get_nowait()   # drop stale
-            except Empty:
-                pass
-            try:
-                vibrate_queue.put_nowait((f, a))
-            except Full:
-                pass
+                q_vib.put_nowait(vib_level)
+            except pyqueue.Full:
+                print("q_vib full!!!")
+        except pyqueue.Empty:
+            print("audio vib empty, waiting...")
+            continue
 
-        if saveToCSV:
-            freq_amp_200ms = np.stack([f0_200ms, amp_200ms], axis=1)
-            np.savetxt(saveCSVPath, freq_amp_200ms, delimiter=",", comments="", fmt="%.6f,%.6f")
+def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: float = 2e-5, smooth_strength: float = 0.15):
+    """Extract tone features from latest audio and push to q_therm."""
+    def _hz_to_bin(hz: float, nfft: int, sr: int) -> int:
+        """Clamp a frequency (Hz) to a valid FFT bin index [0, nfft//2]."""
+        return int(np.clip(np.floor(hz / (sr / float(nfft))), 0, nfft // 2))
+
+    def tone_features(frame: np.ndarray, sr: int, nfft: int) -> tuple[float, float, float, float, float]:
+        """
+        Compute tone-related features on a mono frame:
+        - centroid_hz, centroid_norm in [0,1]
+        - spectral flatness measure (SFM) in [0,1]
+        - high-frequency ratio (>=3 kHz)
+        - harmonicity proxy: low/(low+mid-high) with split at 2 kHz and 8 kHz
+        """
+        # Hann window
+        w = np.hanning(len(frame))
+        # rFFT with chosen nfft (>= len(frame) preferred)
+        spec = np.fft.rfft(frame * w, n=nfft)
+        mag = np.abs(spec) + 1e-12
+        pow_ = mag * mag
+        freqs = np.fft.rfftfreq(nfft, d=1.0 / sr)
+
+        total_pow = float(np.sum(pow_) + 1e-12)
+
+        # Spectral centroid
+        centroid_hz = float(np.sum(freqs * mag) / np.sum(mag))
+        centroid_norm = float(np.clip(centroid_hz / (sr / 2.0), 0.0, 1.0))
+
+        # Spectral flatness (0=peaky/tonal, 1=flat/noisy)
+        sfm = float(np.exp(np.mean(np.log(mag))) / (np.mean(mag)))
+
+        # High-frequency ratio (>= 3 kHz)
+        hf_bin = _hz_to_bin(3000, nfft, sr)
+        hf_ratio = float(np.sum(pow_[hf_bin:]) / total_pow)
+
+        # Harmonicity proxy: more low vs mid-high energy => "more voiced"
+        lf_max = _hz_to_bin(2000, nfft, sr)   # < 2 kHz
+        mh_max = _hz_to_bin(8000, nfft, sr)   # < 8 kHz (cap if sr low)
+        lf = float(np.sum(pow_[:lf_max]) + 1e-12)
+        midh = float(np.sum(pow_[lf_max:mhh_max if (mhh_max := mh_max) else lf_max]) + 1e-12)
+        harmonicity = float(lf / (lf + midh))  # larger => more harmonic/voiced
+
+        return centroid_hz, centroid_norm, sfm, hf_ratio, harmonicity
+    
+
+    hop_s = Config.AUDIO_CHUNK_MS / 1000.0
+    # EMA coefficient derived from continuous-time RC equivalent
+    ema_alpha = 1.0 if smooth_strength <= 0 else (1.0 - np.exp(-hop_s / smooth_strength))
+
+    tone_smooth = 0.0
+
+    # plt.ion()
+    # fig, ax3 = plt.subplots(1, 1, figsize=(10, 6))
+    # tone_plot  = Plot_Window.RollingPlot.RollingPlot(ax3, "Tone (Breathy-aware, 0..1)", "Tone (0..1)", 0.0, 1.0, 3.0, hop_s,
+    #                           with_second=True, second_label="Tone (EMA)")
+    # fig.tight_layout()
 
 
-def VibrateDataFeel(vibrate_queue:Queue):
-    devices = InitDots()
-    device = devices[0]
-    device.registers.set_vibration_mode(VibrationMode.MANUAL)
-
-    period = 0.2
-    next_deadline = time.monotonic()
-    last_f, last_a = 0.0, 0.0
-    while True:
+    while not stop_evt.is_set():
         try:
-            item = vibrate_queue.get(timeout=0.02)
-            f, a = item
-            # Drain any newer items so we act on the latest
-            while True:
-                try:
-                    f, a = vibrate_queue.get_nowait()
-                except Empty:
-                    break
-            last_f, last_a = float(f), float(a)
-        except Empty:
-            # nothing new; keep last_f/last_a
-            pass
+            arr = q_audio_therm.get(timeout=0.1)
+        except pyqueue.Empty:
+            # no new audio; just loop
+            continue
 
-        # Actuate
-        t0 = time.monotonic()
-        if last_a > 0.1:
-            device.play_frequency(int(last_f), last_a)
+        # quick gate on very low energy
+        rms = float(np.sqrt(np.mean(arr ** 2)))
+        if rms < rms_gate:
+            tone_mix = 0.0
         else:
-            device.stop_vibration()
+            # choose nfft >= len(arr), power of two, min 512
+            nfft = max(512, 1 << (len(arr) - 1).bit_length())
+            _, cn, sfm, hfr, harm = tone_features(arr, Config.SAMPLERATE, nfft=nfft)
 
-        next_deadline += period
-        rem = next_deadline - time.monotonic()
-        if rem > 0:
-            time.sleep(rem)
+            # mix: brighter / noisier / high-freq -> hotter; harmonic (voiced) -> cooler
+            # from your prototype: 0.45*cn + 0.25*sfm + 0.20*hfr + 0.10*(1 - harm)
+            tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.10 * (1.0 - harm)
+            tone_mix = float(np.clip(tone_mix, 0.0, 1.0))
+
+        # EMA smoothing
+        tone_smooth = (1.0 - ema_alpha) * tone_smooth + ema_alpha * tone_mix
+        # tone_plot.update(tone_mix, tone_smooth)
+        therm = tone_smooth * Config.THERM_OUT_SCALE
+        try:
+            q_therm.put_nowait(therm)
+        except pyqueue.Full:
+            # if consumer is lagging, drop (we only want freshest)
+            print("q_therm full!!!")
+            pass
+        # plt.pause(0.01)
+
+def worker(stop_evt:Event, q_cmd: Queue):
+    dfc = DataFeelCenter(numOfDots=4)  
+    
+    while not stop_evt.is_set():
+        try:
+            while not q_cmd.empty():
+                # print current time stamp ms
+                # print(f"Current time: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}.{int(time.time() * 1000) % 1000:03d}")
+                cmd = q_cmd.get_nowait()
+                if not cmd:
+                    return
+                method, args = cmd
+
+                getattr(dfc, method)(*args)
+
+        except Exception as e:
+            print(f"worker Err! {e}")
+            stop_evt.set()
+            break
+
+def choose_port(default=None):
+    ports = list(list_ports.comports())
+    if not ports:
+        print("No serial ports found.")
+        sys.exit(1)
+    print("Available ports:")
+    for i, p in enumerate(ports):
+        print(f"  [{i}] {p.device}  {p.description}")
+    prompt = f"Select port index [{0 if default is None else default}]: "
+    try:
+        idx = input(prompt).strip()
+        idx = int(idx) if idx else (0 if default is None else default)
+    except ValueError:
+        idx = 0
+    return ports[idx].device
 
 
+def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Queue):
+    while not stop_evt.is_set():
+        t0 = time.perf_counter()
+        t = q_pres.get()
+        # print("get" , t)
+        temp, pres1, pres2 = t.split(";")
+        p = pres1.split(",")
+        t1 = time.perf_counter()
+        vib = q_vib.get()
+        t2 = time.perf_counter()
+        therm = q_therm.get()
+        t3 = time.perf_counter()
+
+        print(q_pres.qsize(), q_vib.qsize(), q_therm.qsize())
+
+        # print(f"pres {t1 - t0:.3f}s, vib {t2 - t1:.3f}s, therm {t3 - t2:.3f}s")
+
+        led = [[0,0,0]]*8
+
+        for i, val in enumerate(p):
+            if int(val)>60:
+                # led[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
+                # led[i] = [int(val), int(val), int(val)]
+                # map int(val) from 0-1023 to 0-255
+                # led[i] = [int(val) // 4] * 3
+                led[i] = [255, 0, 0]
+
+        # print(vib, therm)
+        t0 = token(superDotID = 0, vibFrequency=70, vibIntensity=vib, therIntensity=therm, ledList=led)
+        # print(t0)
+        try:
+            q_cmd.put_nowait(("useToken", (t0, )))
+            # print(time.perf_counter()-last)
+            # last = time.perf_counter()
+
+        except pyqueue.Full:
+            print("q_cmd full!!!")
+
+
+def read_from_serial(stop_evt: Event, q:Queue, port: str, baud: int = 115200):
+    """Line-framed reader. Reconnects on failure."""
+
+    while not stop_evt.is_set():
+        try:
+            with serial.Serial(port, baudrate=baud, timeout=1) as ser:
+                # set receive buffer to 1
+                # ser.set_buffer_size(rx_size=0, tx_size=0)
+                ser.reset_input_buffer()
+                
+                # read buffer size
+                while not stop_evt.is_set():
+                    try:
+                        line = ser.readline()  
+                        # buffer_size = ser.in_waiting
+                        # print(f"[serial] connected to {port} at {baud} baud, buffer size {buffer_size}")
+                        if line:
+                            d = line.rstrip(b"\r\n").decode("utf-8")
+
+
+                            # workaround: because arduino clock is different from pc, we need to adjust the timing
+                            try:
+                                q.put_nowait(d)
+                            except pyqueue.Full:
+                                try:
+                                    q.get_nowait()
+                                except pyqueue.Empty:
+                                    pass
+                                try:
+                                    q.put_nowait(d)
+                                except pyqueue.Full:
+                                    pass
+                    except serial.SerialException as e:
+                        print(f"[serial] read error: {e}; will reconnect")
+                        break  
+        except serial.SerialException as e:
+            print(f"[serial] open error on {port}: {e}; retrying...")
+        stop_evt.wait(1.0)
+
+def main():
+    baud = 115200
+    port = choose_port()
+    print(f"Starting connection at {port} {baud}…")
+
+    q_audio_playback = Queue(maxsize=1)
+    q_audio_vib = Queue(maxsize=1)
+    q_audio_therm = Queue(maxsize=1)
+
+    q_pres = Queue(maxsize=1)
+    q_vib = Queue()
+    q_therm = Queue()
+    q_cmd = Queue()
+    stop_evt = multiprocessing.Event()
+
+    p_worker = Process(target=worker, args=(stop_evt, q_cmd,), daemon= True) 
+    p_commander = Process(target=Commander, args=(stop_evt, q_pres, q_vib, q_therm, q_cmd,), daemon= True) 
+    p_vib = Process(target=dsp_vib, args=(stop_evt, q_audio_vib, q_vib,), daemon=True)
+    p_therm = Process(target=dsp_therm, args=(stop_evt, q_audio_therm, q_therm,), daemon=True)
+    p_audiocapture = Process(target=AudioCapture, args=(stop_evt, q_audio_playback, q_audio_vib, q_audio_therm), daemon=True)
+    p_audioplayback = Process(target=AudioPlayback, args=(stop_evt, q_audio_playback), daemon=True)
+    p_serial = Process(target=read_from_serial, args=(stop_evt, q_pres, port, baud,), daemon=True)
+    
+    
+
+    p_worker.start()
+    p_commander.start()
+    p_vib.start()
+    p_therm.start()
+    p_audiocapture.start()
+    p_audioplayback.start()
+    p_serial.start()
+
+    # workaround: because there's 5 mysterious data in q_pres, we clean them all first
+    time.sleep(1)
+    while not q_pres.empty():
+        q_pres.get_nowait()
+    while not q_vib.empty():
+        q_vib.get_nowait()
+    while not q_therm.empty():
+        q_therm.get_nowait()
+    while not q_cmd.empty():
+        q_cmd.get_nowait()
+
+    print("Press 'q' then Enter to quit.")
+    try:
+        for line in sys.stdin:
+            if line.strip().lower() == "q":
+                print("Quit requested.")
+                break
+    except KeyboardInterrupt:
+        pass
+    finally:
+        stop_evt.set()
+        p_serial.join(timeout=2)
+        p_commander.join()
+        p_worker.join()
+        p_audiocapture.join()
+        p_audioplayback.join()
+        p_vib.join()
+        print("Stopped cleanly.")
 
 if __name__ == "__main__":
-    print("Starting ASMRFeel !")
-    q_Audio = Queue()
-    parent_conn, child_conn = Pipe()
-
-    vibrate_queue = multiprocessing.Queue(maxsize=1)
-
-
-    AudioHandler.ListDevice()
-
-    audioHandler = AudioHandler(q_Audio)
-    audioHandler1 = AudioHandler(q_Audio)
-
-    stopReadAudioProcessEvent = multiprocessing.Event()
-    ReadAudioProcess = Process(target=audioHandler.RecordAudio, args=(stopReadAudioProcessEvent, ), daemon=True)
-    ReadAudioProcess.start()
-
-    VoiceToVibrateDataProcess = Process(target=VoiceToVibrateData, args=(stopReadAudioProcessEvent, q_Audio, parent_conn, vibrate_queue), daemon=True)
-    VoiceToVibrateDataProcess.start()
-    
-    PlayAudioProcess = Process(target=audioHandler1.PlayAudio, args=(stopReadAudioProcessEvent, child_conn, ), daemon=True)
-    PlayAudioProcess.start()
-
-    VibrateDataFeelProcess = Process(target=VibrateDataFeel, args=(vibrate_queue,), daemon=True)
-    VibrateDataFeelProcess.start()
-
-    print("Press q to  exit!")
-    while True:
-        k = input()
-        k = k.lower().strip()
-        if(k == "q"):
-            print("Exiting...")
-            stopReadAudioProcessEvent.set()
-            ReadAudioProcess.join()
-            VoiceToVibrateDataProcess.join()
-            PlayAudioProcess.join()
-            VibrateDataFeelProcess.join()
-            break
-    print("ASMRFeel done.")
-
-    
-    print("Press q to exit!")
-    while True:
-        k = input()
-        k = k.lower().strip()
-        if(k == "q"):
-            print("Exiting...")
-            stopReadAudioProcessEvent.set()
-            ReadAudioProcess.join()
-            VoiceToVibrateDataProcess.join()
-            PlayAudioProcess.join()
-            break
-    # devices = InitDots()
-    # VoiceToVibrateData("./file.wav")
-    # VibrateDataFeel(devices)
-    print("ASMRFeel done.")
-
+    main()

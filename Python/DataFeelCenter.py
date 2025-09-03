@@ -9,8 +9,8 @@ from dataclasses import dataclass
 class SuperDot(Dot):
     def __init__(self, port, id):
         super().__init__(port, id)
-        self.isVibrating = False;
-        self.isThermaling= False;
+        self.isVibrating = False
+        self.isThermaling= False
         self.registers.set_vibration_mode(VibrationMode.MANUAL)
         self.registers.set_thermal_mode(ThermalMode.MANUAL)
         self.registers.set_led_mode(LedMode.INDIVIDUAL_MANUAL)
@@ -46,7 +46,7 @@ class DataFeelCenter():
     def useToken(self, token:token):
         if token.superDotID is None:
             return
-        print(token)
+        # print(len(self.superDotArr))
 
         targetDot = self.superDotArr[token.superDotID]
 

@@ -246,7 +246,7 @@ class Dot:
 
 
         def set_all(self, ledLists: List[List[int]], therIntensity: float, vibFrequency: float, vibIntensity:float) -> float:
-            print(f"in: {therIntensity}")
+            # print(f"in: {therIntensity}")
             vals = []
             for r, g, b in ledLists:
                 val = (b << 16) | (r << 8) | g 
@@ -261,7 +261,7 @@ class Dot:
             vals.append(lsw)
             vals.append(msw)
 
-            print(therIntensity)
+            # print(therIntensity)
             ti = _to_IEEE754(therIntensity)
             vals.append(ti & 0xFFFF)
             vals.append(ti >> 16)
@@ -292,7 +292,7 @@ class Dot:
             vals.append(vi & 0xFFFF)
             vals.append(vi >> 16)
 
-            print(vals)
+            # print(vals)
 
             
             # self.dev.read_float(self.SINK_TEMP, 3, 2, modbus.BYTEORDER_LITTLE_SWAP)   
