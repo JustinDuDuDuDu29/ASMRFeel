@@ -46,7 +46,6 @@ class DataFeelCenter():
     def useToken(self, token:token):
         if token.superDotID is None:
             return
-        print(token)
 
         targetDot = self.superDotArr[token.superDotID]
 

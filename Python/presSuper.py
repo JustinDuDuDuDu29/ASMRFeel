@@ -52,15 +52,16 @@ def pressureLED(stop_evt: Event, q:Queue, q_cmd:Queue):
     while not stop_evt.is_set():
         tokenFlag = False
         d = q.get()
-        # _d0, _d1 = d.split(";")
-        d0 = d.split(",")
-        # d1 = _d1.split(",")
+        therState, _d0, _d1 = d.split(";")
+        d0 = _d0.split(",")
+        d1 = _d1.split(",")
 
         led0 = [[0,0,0]]*8
         led1 = [[0,0,0]]*8
 
 
         t0 = token(superDotID = 0, vibFrequency=0, vibIntensity=0, therIntensity=0, ledList=led0 )
+        t1 = token(superDotID = 1, vibFrequency=0, vibIntensity=0, therIntensity=0, ledList=led1 )
         # t1 = token(superDotID = 1, vibFrequency=0, vibIntensity=0, ledList=led1)
 
         
@@ -84,14 +85,36 @@ def pressureLED(stop_evt: Event, q:Queue, q_cmd:Queue):
                 tokenFlag = True
                 t0.vibFrequency = 100
                 t0.vibIntensity = 1.0 
-                # t0.vibIntensity = random.uniform(0.5, 1.0)
                 t0.therIntensity = 1.0
-                t0.therDiff= -3.0
+                print(int(therState))
+                if(int(therState) == 1):
+                    t0.therDiff = 3.0
+                else:
+                    t0.therDiff = -3.0 
 
                 if t0.ledList is None:
                     t0.ledList = [[0,0,0] * 8]
                     raise ValueError(f"t0.ledList is None!, have set to [[0,0,0]] * 8")
                 t0.ledList[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
+
+        for i, val in enumerate(d1):
+            if int(val)>60:
+
+                first_pass_done = False 
+                tokenFlag = True
+                t1.vibFrequency = 100
+                t1.vibIntensity = 1.0 
+                t1.therIntensity = 1.0
+                if(int(therState) == 1):
+                    t1.therDiff = 3.0
+                else:
+                    t1.therDiff = -3.0 
+
+                if t1.ledList is None:
+                    t1.ledList = [[0,0,0] * 8]
+                    raise ValueError(f"t0.ledList is None!, have set to [[0,0,0]] * 8")
+                t1.ledList[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
+                
                 
         # for i, val in enumerate(d1):
         #     if int(val)>60:
@@ -111,7 +134,7 @@ def pressureLED(stop_evt: Event, q:Queue, q_cmd:Queue):
 
 
         q_cmd.put_nowait(("useToken", (t0, )))
-        # q_cmd.put_nowait(("useToken", (t1, )))
+        q_cmd.put_nowait(("useToken", (t1, )))
 
 
 
