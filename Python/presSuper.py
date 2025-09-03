@@ -61,37 +61,37 @@ def pressureLED(stop_evt: Event, q:Queue, q_cmd:Queue):
 
 
         t0 = token(superDotID = 0, vibFrequency=0, vibIntensity=0, therIntensity=0, ledList=led0 )
-        t1 = token(superDotID = 1, vibFrequency=0, vibIntensity=0, ledList=led1)
+        # t1 = token(superDotID = 1, vibFrequency=0, vibIntensity=0, ledList=led1)
 
         
-        if random.random() < .5:
-
-            t0.vibFrequency = 200
-            t0.vibIntensity = 1.0 
-            # t0.vibIntensity = random.uniform(0.5, 1.0)
-            t0.therIntensity = 1.0
-            t0.therDiff= -3.0
-            q_cmd.put_nowait(("useToken", (t0, )))
-            q_cmd.put_nowait(("useToken", (t0, )))
-            q_cmd.put_nowait(("useToken", (t0, )))
-            q_cmd.put_nowait(("useToken", (t0, )))
-
-
-        # for i, val in enumerate(d0):
-        #     if int(val)>60:
+        # if random.random() < .5:
         #
-        #         first_pass_done = False 
-        #         tokenFlag = True
-        #         t0.vibFrequency = 100
-        #         t0.vibIntensity = 1.0 
-        #         # t0.vibIntensity = random.uniform(0.5, 1.0)
-        #         t0.therIntensity = 1.0
-        #         t0.therDiff= -3.0
-        #
-        #         if t0.ledList is None:
-        #             t0.ledList = [[0,0,0] * 8]
-        #             raise ValueError(f"t0.ledList is None!, have set to [[0,0,0]] * 8")
-        #         t0.ledList[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
+        #     t0.vibFrequency = 200
+        #     t0.vibIntensity = 1.0 
+        #     # t0.vibIntensity = random.uniform(0.5, 1.0)
+        #     t0.therIntensity = 1.0
+        #     t0.therDiff= -3.0
+        #     q_cmd.put_nowait(("useToken", (t0, )))
+        #     q_cmd.put_nowait(("useToken", (t0, )))
+        #     q_cmd.put_nowait(("useToken", (t0, )))
+        #     q_cmd.put_nowait(("useToken", (t0, )))
+
+
+        for i, val in enumerate(d0):
+            if int(val)>60:
+
+                first_pass_done = False 
+                tokenFlag = True
+                t0.vibFrequency = 100
+                t0.vibIntensity = 1.0 
+                # t0.vibIntensity = random.uniform(0.5, 1.0)
+                t0.therIntensity = 1.0
+                t0.therDiff= -3.0
+
+                if t0.ledList is None:
+                    t0.ledList = [[0,0,0] * 8]
+                    raise ValueError(f"t0.ledList is None!, have set to [[0,0,0]] * 8")
+                t0.ledList[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
                 
         # for i, val in enumerate(d1):
         #     if int(val)>60:
@@ -111,7 +111,7 @@ def pressureLED(stop_evt: Event, q:Queue, q_cmd:Queue):
 
 
         q_cmd.put_nowait(("useToken", (t0, )))
-        q_cmd.put_nowait(("useToken", (t1, )))
+        # q_cmd.put_nowait(("useToken", (t1, )))
 
 
 

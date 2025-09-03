@@ -36,7 +36,6 @@ class token:
     therDiff: float | None = None 
     vibFrequency: float | None = None 
     vibIntensity: float | None = None 
-    vibIntensity: float | None = None 
     ledList: List[List[int]] | None =  None
 
 
