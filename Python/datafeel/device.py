@@ -1,48 +1,9 @@
-from abc import abstractmethod
 from math import ceil
-import struct
-from time import time
-from typing import List, Tuple
+from typing import List
 import serial
 import serial.tools.list_ports
 import minimalmodbus as modbus
 from enum import IntEnum
-
-def _from_IEEE754(int_val) -> int:
-    return struct.unpack('!f', struct.pack('!I', int_val))[0]
-
-def _to_Long_Int(val: int, littleEndianSwap: bool = False, swap: bool = False, littleEndian: bool = False) -> Tuple[int, int]:
-    #TODO: Strange, need testing
-
-    res = format(val, '032b')
-
-    a = res[0:8]
-    b = res[8:16]
-    c = res[16:24]
-    d = res[24:32]
-
-    res = d + c + b + a
-
-    if littleEndian:
-        res = a + b + c + d
-        return int(res[0: 16], 2), int(res[16:32], 2)
-        
-    if swap:
-        res = c + d + a + b
-        return int(res[0: 16], 2), int(res[16:32], 2)
-
-    if littleEndianSwap:
-        res = b + a + d + c
-        return int(res[0: 16], 2), int(res[16:32], 2)
-
-    
-    return int(res[0: 16], 2), int(res[16:32], 2)
-
-
-def _to_IEEE754(val: int | float | str) -> int:
-    if isinstance(val, str):
-       val = float(val) 
-    return struct.unpack('>I', struct.pack('>f', val))[0]
 
 def _fix_string_endianness(string):
     return ''.join(string[i:i+2][::-1] for i in range(0, len(string), 2))
@@ -244,63 +205,6 @@ class Dot:
             self.dev.serial.parity = serial.PARITY_NONE
             self.dev.serial.stopbits = 1
 
-
-        def set_all(self, ledLists: List[List[int]], therIntensity: float, vibFrequency: float, vibIntensity:float) -> float:
-            vals = []
-            for r, g, b in ledLists:
-                val = (b << 16) | (r << 8) | g 
-                vals.append(val & 0xFFFF)
-                vals.append(val >> 16)
-
-            lsw = int(int(ThermalMode.MANUAL) % 65535)
-            msw = int(int(ThermalMode.MANUAL) / 65535)
-            # lsw, msw = _to_Long_Int(int(ThermalMode.MANUAL),littleEndianSwap = True)
-            # vals.append(0)
-            # vals.append(0)
-            vals.append(lsw)
-            vals.append(msw)
-
-            # print(therIntensity)
-            ti = _to_IEEE754(therIntensity)
-            vals.append(ti & 0xFFFF)
-            vals.append(ti >> 16)
-            
-            tt = _to_IEEE754(26.5)
-            vals.append(tt & 0xFFFF)
-            vals.append(tt >> 16)
-            
-
-            lsw = int(int(VibrationMode.MANUAL) % 65535)
-            msw = int(int(VibrationMode.MANUAL) / 65535)
-            # lsw, msw = _to_Long_Int(int(ThermalMode.MANUAL),littleEndianSwap = True)
-            # vals.append(0)
-            # vals.append(0)
-            vals.append(lsw)
-            vals.append(msw)
-            # vm = _to_IEEE754(int(VibrationMode.MANUAL))
-            # vals.append(1)
-            # vals.append(0)
-            # vals.append(vm & 0xFFFF)
-            # vals.append(vm >> 16)
-
-            vf = _to_IEEE754(vibFrequency)
-            vals.append(vf & 0xFFFF)
-            vals.append(vf >> 16)
-            
-            vi = _to_IEEE754(vibIntensity)
-            vals.append(vi & 0xFFFF)
-            vals.append(vi >> 16)
-
-            # print(vals)
-
-            
-            # self.dev.read_float(self.SINK_TEMP, 3, 2, modbus.BYTEORDER_LITTLE_SWAP)   
-
-            self.dev.write_registers(registeraddress = self.LED_INDIVIDUAL_MANUAL_0, values=vals)
-            lsw, msw = self.dev.read_registers(registeraddress = self.SKIN_TEMP, number_of_registers=2)
-            return _from_IEEE754((msw<< 16) + lsw)
-            
-
         def get_skin_temperature(self):
             """
             Get the skin temperature in Celsius.
@@ -333,17 +237,8 @@ class Dot:
 
         def set_thermal_mode(self, mode: ThermalMode):
             """
-            <D-o>
             Set the thermal mode.
             """
-            arr = []
-            v = _to_IEEE754(int(mode))
-            arr.append(v & 0xFFFF)
-            arr.append(v >> 16)
-            self.dev.write_registers(registeraddress=self.THERMAL_MODE,values=arr)
-            
-            
-            
             self.dev.write_long(registeraddress=self.THERMAL_MODE, value=int(mode), signed=False, byteorder=modbus.BYTEORDER_LITTLE_SWAP, number_of_registers=2)   
 
         def get_thermal_mode(self):
@@ -443,19 +338,6 @@ class Dot:
         def get_vibration_sequence_3456(self):
             return self.dev.read_long(self.VIBRATION_SEQUENCE_4567, 3, False, modbus.BYTEORDER_LITTLE_SWAP, 2)
 
-        def set_vibration_fast(self, frequency: float, intensity: float):
-            val = []
-            
-            inten = _to_IEEE754(intensity)
-            freq = _to_IEEE754(frequency)
-        
-            val.append(inten & 0xFFFF)
-            val.append(inten >> 16)
-            val.append(freq & 0xFFFF)
-            val.append(freq >> 16)
-
-            self.dev.write_registers(registeraddress=self.VIBRATION_INTENSITY, values=val)
-
         def set_led_mode(self, mode: LedMode):
             """
             Set the LED mode.
@@ -486,17 +368,6 @@ class Dot:
             blue = (val >> 16) & 0xFF
             return red, green, blue
             
-        def set_individual_leds(self, ledLists:List[List[int]]):
-            colorList = []
-            for r, g, b in ledLists:
-                val = (b << 16) | (r << 8) | g 
-                colorList.append(val & 0xFFFF)
-                colorList.append(val >> 16)
-
-
-            self.dev.write_registers(registeraddress = self.LED_INDIVIDUAL_MANUAL_0, values=colorList)
-
-
         def set_individual_led(self, index, red, green, blue):
             """
             Set the individual LED color. Red, green and blue are between 0 and 255. Only valid when LED mode is INDIVIDUAL_MANUAL.
