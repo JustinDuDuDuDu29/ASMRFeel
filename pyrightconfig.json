@@ -1,0 +1,12 @@
+{
+  "venvPath": "/Users/justin/.pyenv/versions",
+  "venv": "3.13.3",
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": ["src"]
+    }
+  ],
+  "typeCheckingMode": "basic"
+}
+
