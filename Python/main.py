@@ -246,6 +246,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         t = q_pres.get()
         temp, pres1, pres2 = t.split(";")
         p = pres1.split(",")
+        p1 = pres2.split(",")
         vib =None 
         if not q_vib.empty():
             vib = q_vib.get(block=False)
@@ -271,11 +272,24 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 # led[i] = [int(val) // 4] * 3
                 led[i] = [255, 0, 0]
 
+        led1 = [[0,0,0]]*8
+
+        for i, val in enumerate(p1):
+            if int(val)>60:
+                # led[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
+                # led[i] = [int(val), int(val), int(val)]
+                # map int(val) from 0-1023 to 0-255
+                # led[i] = [int(val) // 4] * 3
+                led1[i] = [255, 0, 0]
+
+
         # print(vib, therm)
         t0 = token(superDotID = 0, vibFrequency=70, vibIntensity=vib, therIntensity=0, ledList=led)
+        t1 = token(superDotID = 1, vibFrequency=70, vibIntensity=vib, therIntensity=0, ledList=led1)
         # print(t0)
         try:
             q_cmd.put_nowait(("useToken", (t0, )))
+            q_cmd.put_nowait(("useToken", (t1, )))
             # print(time.perf_counter()-last)
             # last = time.perf_counter()
 
