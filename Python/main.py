@@ -246,12 +246,12 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         t = q_pres.get()
         temp, pres1, pres2 = t.split(";")
         p = pres1.split(",")
-        vib = 0
+        vib =None 
         if not q_vib.empty():
             vib = q_vib.get(block=False)
             
 
-        therm= 0
+        therm=None 
         if not q_therm.empty():
             therm = q_therm.get(block=False)
 
