@@ -10,8 +10,8 @@ int lastButtonState = LOW;
 unsigned long lastDebounceTime = 0;
 unsigned long debounceDelay = 50;
 unsigned long previousMillis = 0;
-
-const long interval = 70;
+int LED = 13;
+const long interval = 65;
 bool hot = true;
 void setup() {
   pinMode(pin_Out_S0, OUTPUT);
@@ -21,6 +21,8 @@ void setup() {
   //pinMode(pin_In_Mux1, INPUT);
 
   Serial.begin(115200);
+  Serial.flush();
+  Serial.clear();
 }
 
 void loop() {
@@ -40,6 +42,7 @@ void loop() {
     }
   }
 
+  digitalWrite(LED, hot);
 
   lastButtonState = reading;
 

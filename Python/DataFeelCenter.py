@@ -68,12 +68,16 @@ class DataFeelCenter():
             
         if token.vibIntensity is None:
             token.vibIntensity= targetDot.vibIntensity
+        if(token.vibIntensity < .6):
+            token.vibIntensity = 0
+        token.vibIntensity = min(abs(token.vibIntensity), 1)
         targetDot.vibIntensity= token.vibIntensity
 
         if token.ledList is None:
             token.ledList = targetDot.ledList
         targetDot.ledList = token.ledList
 
+        print(token)
         targetDot.therCurrent = targetDot.registers.set_all(targetDot.ledList, therIntensity=token.therIntensity, vibFrequency=token.vibFrequency, vibIntensity=token.vibIntensity)
         # if token.ledList is not None:
         #     self.led_Arr_no_timing(token.superDotID, token.ledList) 

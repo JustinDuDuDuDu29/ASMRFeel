@@ -15,8 +15,8 @@ import matplotlib.pyplot as plt
 import Plot_Window.RollingPlot
 
 class Config:
-    INPUT_DEVICE_INDEX = 1
-    OUTPUT_DEVICE_INDEX = 5
+    INPUT_DEVICE_INDEX = 0
+    OUTPUT_DEVICE_INDEX = 1
     SAMPLERATE = 16000
     AUDIO_CHUNK_MS = 70
 
@@ -243,18 +243,21 @@ def choose_port(default=None):
 
 def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Queue):
     while not stop_evt.is_set():
-        t0 = time.perf_counter()
         t = q_pres.get()
-        # print("get" , t)
         temp, pres1, pres2 = t.split(";")
         p = pres1.split(",")
-        t1 = time.perf_counter()
-        vib = q_vib.get()
-        t2 = time.perf_counter()
-        therm = q_therm.get()
-        t3 = time.perf_counter()
+        vib = 0
+        if not q_vib.empty():
+            vib = q_vib.get(block=False)
+            
 
-        print(q_pres.qsize(), q_vib.qsize(), q_therm.qsize())
+        therm= 0
+        if not q_therm.empty():
+            therm = q_therm.get(block=False)
+
+
+        # print(q_pres.empty(), q_vib.empty(), q_therm.empty())
+        # print(q_pres.qsize(), q_vib.qsize(), q_therm.qsize())
 
         # print(f"pres {t1 - t0:.3f}s, vib {t2 - t1:.3f}s, therm {t3 - t2:.3f}s")
 
@@ -269,7 +272,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 led[i] = [255, 0, 0]
 
         # print(vib, therm)
-        t0 = token(superDotID = 0, vibFrequency=70, vibIntensity=vib, therIntensity=therm, ledList=led)
+        t0 = token(superDotID = 0, vibFrequency=70, vibIntensity=vib, therIntensity=0, ledList=led)
         # print(t0)
         try:
             q_cmd.put_nowait(("useToken", (t0, )))
@@ -293,25 +296,27 @@ def read_from_serial(stop_evt: Event, q:Queue, port: str, baud: int = 115200):
                 # read buffer size
                 while not stop_evt.is_set():
                     try:
+                        # print(f"is Empty? {q.empty()}")
                         line = ser.readline()  
                         # buffer_size = ser.in_waiting
                         # print(f"[serial] connected to {port} at {baud} baud, buffer size {buffer_size}")
                         if line:
                             d = line.rstrip(b"\r\n").decode("utf-8")
+                            q.put(d)
 
 
                             # workaround: because arduino clock is different from pc, we need to adjust the timing
-                            try:
-                                q.put_nowait(d)
-                            except pyqueue.Full:
-                                try:
-                                    q.get_nowait()
-                                except pyqueue.Empty:
-                                    pass
-                                try:
-                                    q.put_nowait(d)
-                                except pyqueue.Full:
-                                    pass
+                            # try:
+                            #     q.put_nowait(d)
+                            # except pyqueue.Full:
+                            #     try:
+                            #         q.get_nowait()
+                            #     except pyqueue.Empty:
+                            #         pass
+                            #     try:
+                            #         q.put_nowait(d)
+                            #     except pyqueue.Full:
+                            #         pass
                     except serial.SerialException as e:
                         print(f"[serial] read error: {e}; will reconnect")
                         break  
@@ -328,7 +333,7 @@ def main():
     q_audio_vib = Queue(maxsize=1)
     q_audio_therm = Queue(maxsize=1)
 
-    q_pres = Queue(maxsize=1)
+    q_pres = Queue()
     q_vib = Queue()
     q_therm = Queue()
     q_cmd = Queue()
@@ -353,15 +358,15 @@ def main():
     p_serial.start()
 
     # workaround: because there's 5 mysterious data in q_pres, we clean them all first
-    time.sleep(1)
-    while not q_pres.empty():
-        q_pres.get_nowait()
-    while not q_vib.empty():
-        q_vib.get_nowait()
-    while not q_therm.empty():
-        q_therm.get_nowait()
-    while not q_cmd.empty():
-        q_cmd.get_nowait()
+    # time.sleep(1)
+    # while not q_pres.empty():
+    #     q_pres.get_nowait()
+    # while not q_vib.empty():
+    #     q_vib.get_nowait()
+    # while not q_therm.empty():
+    #     q_therm.get_nowait()
+    # while not q_cmd.empty():
+    #     q_cmd.get_nowait()
 
     print("Press 'q' then Enter to quit.")
     try:
