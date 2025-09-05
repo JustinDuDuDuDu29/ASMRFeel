@@ -23,7 +23,7 @@ def dsp_vib(stop_evt: Event, q_audio_vib: Queue, q_vib: Queue):
             vib_level = rms * Config.VIB_OUT_SCALE
             try:
                 q_vib.put_nowait(vib_level)
-                print(vib_level)
+                # print(vib_level)
             except pyqueue.Full:
                 print("q_vib full!!!")
         except pyqueue.Empty:
@@ -81,11 +81,11 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
 
     tone_smooth = 0.0
 
-    plt.ion()
-    fig, ax3 = plt.subplots(1, 1, figsize=(10, 6))
-    tone_plot  = RollingPlot(ax3, "Tone (Breathy-aware, 0..1)", "Tone (0..1)", 0.0, 1.0, 3.0, hop_s,
-                              with_second=True, second_label="Tone (EMA)")
-    fig.tight_layout()
+    # plt.ion()
+    # fig, ax3 = plt.subplots(1, 1, figsize=(10, 6))
+    # tone_plot  = RollingPlot(ax3, "Tone (Breathy-aware, 0..1)", "Tone (0..1)", 0.0, 1.0, 3.0, hop_s,
+    #                           with_second=True, second_label="Tone (EMA)")
+    # fig.tight_layout()
 
 
     while not stop_evt.is_set():
@@ -111,7 +111,7 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
 
         # EMA smoothing
         tone_smooth = (1.0 - ema_alpha) * tone_smooth + ema_alpha * tone_mix
-        tone_plot.update(tone_mix, tone_smooth)
+        # tone_plot.update(tone_mix, tone_smooth)
         therm = tone_smooth * Config.THERM_OUT_SCALE
         try:
             q_therm.put_nowait(therm)
@@ -119,5 +119,5 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
             # if consumer is lagging, drop (we only want freshest)
             print("q_therm full!!!")
             pass
-        plt.pause(0.01)
+        # plt.pause(0.01)
 
