@@ -13,7 +13,7 @@ class RollingPlot:
         self.ys = collections.deque(maxlen=self.max_points)
         (self.line,) = self.ax.plot([], [], linewidth=1.6)
         self.line2 = None
-        self.ys2 = None
+        self.ys2 = []
         if with_second:
             (self.line2,) = self.ax.plot([], [], 'y', linewidth=1.6)  # 黃色線
             self.ys2 = collections.deque(maxlen=self.max_points)
