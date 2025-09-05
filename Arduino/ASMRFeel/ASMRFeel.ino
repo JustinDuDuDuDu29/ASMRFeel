@@ -49,7 +49,12 @@ void loop() {
   if (currentMillis - previousMillis >= interval) {
     updateMux();
     String line = "";
-
+    // for (int i = 0; i < 8; i++) {
+    //   line += String(Mux1_State[i]);
+    //   if (i < 7) {
+    //     line += ",";
+    //   }
+    // }
     if (hot) {
       line += "1;";
     } else {
