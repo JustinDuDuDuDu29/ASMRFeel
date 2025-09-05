@@ -2,6 +2,7 @@ from multiprocessing.synchronize import Event
 from multiprocessing import  Process, Queue
 from DataFeelCenter import DataFeelCenter, token
 import queue as pyqueue
+import time
 
 def Worker(stop_evt:Event, q_cmd: Queue):
     dfc = DataFeelCenter(numOfDots=4)  
@@ -24,19 +25,47 @@ def Worker(stop_evt:Event, q_cmd: Queue):
         #     break
 
 def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Queue):
+    start = False
+    startCool = False
+    last_trigger = time.perf_counter()
+    lastCool_trigger = time.perf_counter()
     while not stop_evt.is_set():
-        # t = q_pres.get()
+        # t = q_pres.get(block=False)
         # temp, pres1, pres2 = t.split(";")
         # p = pres1.split(",")
         # p1 = pres2.split(",")
-        vib =None 
-        if not q_vib.empty():
-            vib = q_vib.get(block=False)
-            
+        vib = q_vib.get()
+        therm = q_therm.get()
 
-        therm=None 
-        if not q_therm.empty():
-            therm = q_therm.get(block=False)
+        # ------Thermal Feedback------------------
+        tone_smooth = therm
+
+        TONE_THRESHOLD = 0.27
+        DURATION_THRESHOLD = 0.1
+
+        thermVal = None
+        thermDiff = None
+
+
+        if tone_smooth >= TONE_THRESHOLD:
+            print("PreHeating...")
+            if start == False:
+                print("Heating Count")
+                last_trigger = time.perf_counter()
+                start = True
+            elif time.perf_counter() - last_trigger >= DURATION_THRESHOLD:
+                print("Heating...")
+                thermDiff = 6.5
+        elif tone_smooth < TONE_THRESHOLD:
+            print("PreCooling...")
+            if startCool == False:
+                lastCool_trigger = time.perf_counter()
+                startCool = True
+            elif time.perf_counter() - lastCool_trigger >= DURATION_THRESHOLD*5:
+                start = False
+                startCool = False
+                print("Cooling...")
+                thermDiff = 0
 
 
         # print(q_pres.empty(), q_vib.empty(), q_therm.empty())
@@ -65,9 +94,9 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         #         led1[i] = [255, 0, 0]
 
 
-        print(vib, therm)
-        t0 = token(superDotID = 0, vibFrequency=70, vibIntensity=vib, therIntensity=0, ledList=led)
-        t1 = token(superDotID = 1, vibFrequency=70, vibIntensity=vib, therIntensity=0, ledList=led1)
+        # print(vib, therm)
+        t0 = token(superDotID = 0, vibFrequency=70, vibIntensity=vib, therIntensity=thermVal, therDiff=thermDiff, ledList=led)
+        t1 = token(superDotID = 1, vibFrequency=70, vibIntensity=vib, therIntensity=thermVal, therDiff=thermDiff, ledList=led1)
         # print(t0)
         try:
             q_cmd.put_nowait(("useToken", (t0, )))

@@ -15,7 +15,7 @@ import queue as pyqueue
 
 # -------------------- Audio Capture --------------------
 
-def AudioCapture(stop_evt: Event, q_audio_playback: Queue, q_audio_vib: Queue, q_audio_therm: Queue, sr=Config.SAMPLERATE, chunk_ms=Config.AUDIO_CHUNK_MS):
+def AudioCapture(stop_evt: Event, q_audio_playback: Queue, q_audio_vib: Queue, q_audio_therm: Queue, sr=Config.SAMPLERATE, chunk_ms=Config.AUDIO_CHUNK_MS, vibra_delay=Config.VIBRATION_DELAY_S):
     """Continuously capture audio in 70 ms frames and put the latest into q_audio."""
     pa = pyaudio.PyAudio()
     # print all device
@@ -31,6 +31,9 @@ def AudioCapture(stop_evt: Event, q_audio_playback: Queue, q_audio_vib: Queue, q
                      input_device_index=Config.INPUT_DEVICE_INDEX,
                      frames_per_buffer=framesize)
 
+    buffer = []
+    start_time = time.time()
+
     while not stop_evt.is_set():
         data = stream.read(framesize, exception_on_overflow=False)
         arr = np.frombuffer(data, dtype=np.float32)
@@ -40,9 +43,12 @@ def AudioCapture(stop_evt: Event, q_audio_playback: Queue, q_audio_vib: Queue, q
             print("q_audio_playback queue is full!!!")
 
         try:
-            q_audio_vib.put_nowait(arr)
+            buffer.append(arr)
         except pyqueue.Full:
             print("q_audio_vib queue is full!!!")
+
+        if (time.time() - start_time) > vibra_delay:  
+            q_audio_vib.put_nowait(buffer.pop(0))
 
         try:
             q_audio_therm.put_nowait(arr)

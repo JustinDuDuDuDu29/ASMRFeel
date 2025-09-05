@@ -2,6 +2,7 @@ from multiprocessing.synchronize import Event
 from multiprocessing import  Process, Queue
 from DataFeelCenter import DataFeelCenter, token
 import serial
+import queue as pyqueue
 
 def read_from_serial(stop_evt: Event, q:Queue, port: str, baud: int = 115200):
     """Line-framed reader. Reconnects on failure."""
@@ -26,17 +27,17 @@ def read_from_serial(stop_evt: Event, q:Queue, port: str, baud: int = 115200):
 
 
                             # workaround: because arduino clock is different from pc, we need to adjust the timing
-                            # try:
-                            #     q.put_nowait(d)
-                            # except pyqueue.Full:
-                            #     try:
-                            #         q.get_nowait()
-                            #     except pyqueue.Empty:
-                            #         pass
-                            #     try:
-                            #         q.put_nowait(d)
-                            #     except pyqueue.Full:
-                            #         pass
+                            try:
+                                q.put_nowait(d)
+                            except pyqueue.Full:
+                                try:
+                                    q.get_nowait()
+                                except pyqueue.Empty:
+                                    pass
+                                try:
+                                    q.put_nowait(d)
+                                except pyqueue.Full:
+                                    pass
                     except serial.SerialException as e:
                         print(f"[serial] read error: {e}; will reconnect")
                         break  

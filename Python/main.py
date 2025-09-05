@@ -35,7 +35,7 @@ def main():
     q_audio_vib = Queue(maxsize=1)
     q_audio_therm = Queue(maxsize=1)
 
-    q_pres = Queue()
+    q_pres = Queue(maxsize=1)
     q_vib = Queue()
     q_therm = Queue()
     q_cmd = Queue()

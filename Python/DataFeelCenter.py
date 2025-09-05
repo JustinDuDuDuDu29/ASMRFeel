@@ -77,7 +77,7 @@ class DataFeelCenter():
             token.ledList = targetDot.ledList
         targetDot.ledList = token.ledList
 
-        print(token)
+        # print(token)
         targetDot.therCurrent = targetDot.registers.set_all(targetDot.ledList, therIntensity=token.therIntensity, vibFrequency=token.vibFrequency, vibIntensity=token.vibIntensity)
         # if token.ledList is not None:
         #     self.led_Arr_no_timing(token.superDotID, token.ledList) 
