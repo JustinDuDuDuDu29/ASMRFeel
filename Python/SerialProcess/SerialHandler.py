@@ -23,7 +23,7 @@ def read_from_serial(stop_evt: Event, q:Queue, port: str, baud: int = 115200):
                         # print(f"[serial] connected to {port} at {baud} baud, buffer size {buffer_size}")
                         if line:
                             d = line.rstrip(b"\r\n").decode("utf-8")
-                            q.put(d)
+                            # q.put(d)
 
 
                             # workaround: because arduino clock is different from pc, we need to adjust the timing

@@ -23,6 +23,16 @@ def Worker(stop_evt:Event, q_cmd: Queue):
         #     print(f"worker Err! {e}")
         #     stop_evt.set()
         #     break
+    
+    '''Cool Down'''
+    t0 = token(superDotID = 2, vibFrequency=20, vibIntensity=None, therIntensity=None, therDiff=-3, ledList=None)
+    t1 = token(superDotID = 3, vibFrequency=20, vibIntensity=None, therIntensity=None, therDiff=-3, ledList=None)
+    cmd = ("useToken", (t0, ))
+    cmd2 = ("useToken", (t1, ))
+    method, args = cmd
+    getattr(dfc, method)(*args)
+    method, args = cmd2
+    getattr(dfc, method)(*args)
 
 def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Queue):
     start = False
@@ -30,10 +40,11 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
     last_trigger = time.perf_counter()
     lastCool_trigger = time.perf_counter()
     while not stop_evt.is_set():
-        # t = q_pres.get(block=False)
-        # temp, pres1, pres2 = t.split(";")
-        # p = pres1.split(",")
-        # p1 = pres2.split(",")
+        print(q_pres.qsize(), q_vib.qsize(), q_therm.qsize())
+        t = q_pres.get()
+        temp, pres1, pres2 = t.split(";")
+        p = pres1.split(",")
+        p1 = pres2.split(",")
         vib = q_vib.get()
         therm = q_therm.get()
 
@@ -48,16 +59,16 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
 
 
         if tone_smooth >= TONE_THRESHOLD:
-            print("PreHeating...")
+            # print("PreHeating...")
             if start == False:
-                print("Heating Count")
+                # print("Heating Count")
                 last_trigger = time.perf_counter()
                 start = True
             elif time.perf_counter() - last_trigger >= DURATION_THRESHOLD:
                 print("Heating...")
-                thermDiff = 6.5
+                thermDiff = 4
         elif tone_smooth < TONE_THRESHOLD:
-            print("PreCooling...")
+            # print("PreCooling...")
             if startCool == False:
                 lastCool_trigger = time.perf_counter()
                 startCool = True
@@ -75,34 +86,41 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
 
         led = [[0,0,0]]*8
 
-        # for i, val in enumerate(p):
-        #     if int(val)>60:
-        #         # led[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
-        #         # led[i] = [int(val), int(val), int(val)]
-        #         # map int(val) from 0-1023 to 0-255
-        #         # led[i] = [int(val) // 4] * 3
-        #         led[i] = [255, 0, 0]
+        for i, val in enumerate(p):
+            if int(val)>60:
+                # led[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
+                # led[i] = [int(val), int(val), int(val)]
+                # map int(val) from 0-1023 to 0-255
+                # led[i] = [int(val) // 4] * 3
+                led[i] = [255, 0, 0]
 
         led1 = [[0,0,0]]*8
 
-        # for i, val in enumerate(p1):
-        #     if int(val)>60:
-        #         # led[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
-        #         # led[i] = [int(val), int(val), int(val)]
-        #         # map int(val) from 0-1023 to 0-255
-        #         # led[i] = [int(val) // 4] * 3
-        #         led1[i] = [255, 0, 0]
+        for i, val in enumerate(p1):
+            if int(val)>60:
+                # led[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
+                # led[i] = [int(val), int(val), int(val)]
+                # map int(val) from 0-1023 to 0-255
+                # led[i] = [int(val) // 4] * 3
+                led1[i] = [255, 0, 0]
 
 
         # print(vib, therm)
-        t0 = token(superDotID = 0, vibFrequency=70, vibIntensity=vib, therIntensity=thermVal, therDiff=thermDiff, ledList=led)
-        t1 = token(superDotID = 1, vibFrequency=70, vibIntensity=vib, therIntensity=thermVal, therDiff=thermDiff, ledList=led1)
+        '''HeadPhone'''
+        t0 = token(superDotID = 2, vibFrequency=10, vibIntensity=vib, therIntensity=thermVal, therDiff=thermDiff, ledList=None)
+        t1 = token(superDotID = 3, vibFrequency=10, vibIntensity=vib, therIntensity=thermVal, therDiff=thermDiff, ledList=None)
+        '''Hand'''
+        t2 = token(superDotID = 0, vibFrequency=None, vibIntensity=None, therIntensity=None, therDiff=None, ledList=led)
+        t3 = token(superDotID = 1, vibFrequency=None, vibIntensity=None, therIntensity=None, therDiff=None, ledList=led1)
         # print(t0)
         try:
             q_cmd.put_nowait(("useToken", (t0, )))
             q_cmd.put_nowait(("useToken", (t1, )))
+            q_cmd.put_nowait(("useToken", (t2, )))
+            q_cmd.put_nowait(("useToken", (t3, )))
             # print(time.perf_counter()-last)
             # last = time.perf_counter()
 
         except pyqueue.Full:
             print("q_cmd full!!!")
+    

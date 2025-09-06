@@ -8,6 +8,7 @@ from AudioProcess.AudioHandler import AudioCapture, AudioPlayback
 from DataFeelProcess.DFHandler import Worker, Commander
 from DataProcess.DataHandler import dsp_therm, dsp_vib
 from SerialProcess.SerialHandler import read_from_serial
+from DataFeelCenter import DataFeelCenter, token
 
 def choose_port(default=None):
     ports = list(list_ports.comports())
@@ -47,7 +48,7 @@ def main():
     p_therm = Process(target=dsp_therm, args=(stop_evt, q_audio_therm, q_therm,), daemon=True)
     p_audiocapture = Process(target=AudioCapture, args=(stop_evt, q_audio_playback, q_audio_vib, q_audio_therm), daemon=True)
     p_audioplayback = Process(target=AudioPlayback, args=(stop_evt, q_audio_playback), daemon=True)
-    # p_serial = Process(target=read_from_serial, args=(stop_evt, q_pres, port, baud,), daemon=True)
+    p_serial = Process(target=read_from_serial, args=(stop_evt, q_pres, port, baud,), daemon=True)
     
     
 
@@ -57,7 +58,7 @@ def main():
     p_therm.start()
     p_audiocapture.start()
     p_audioplayback.start()
-    # p_serial.start()
+    p_serial.start()
 
     # workaround: because there's 5 mysterious data in q_pres, we clean them all first
     # time.sleep(1)
@@ -79,13 +80,15 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
+        
         stop_evt.set()
-        # p_serial.join(timeout=2)
+        p_serial.join(timeout=2)
         p_commander.join()
         p_worker.join()
         p_audiocapture.join()
         p_audioplayback.join()
         p_vib.join()
+        p_therm.join()
         print("Stopped cleanly.")
 
 if __name__ == "__main__":

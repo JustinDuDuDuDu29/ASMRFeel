@@ -42,13 +42,16 @@ def AudioCapture(stop_evt: Event, q_audio_playback: Queue, q_audio_vib: Queue, q
         except pyqueue.Full:
             print("q_audio_playback queue is full!!!")
 
-        try:
-            buffer.append(arr)
-        except pyqueue.Full:
-            print("q_audio_vib queue is full!!!")
+        buffer.append(arr)
 
         if (time.time() - start_time) > vibra_delay:  
-            q_audio_vib.put_nowait(buffer.pop(0))
+            try:
+                q_audio_vib.put_nowait(buffer.pop(0))
+            except pyqueue.Full:
+                print("q_audio_vib queue is full!!!")
+        else:
+            q_audio_vib.put_nowait(arr)
+
 
         try:
             q_audio_therm.put_nowait(arr)
