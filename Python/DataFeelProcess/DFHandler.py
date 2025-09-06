@@ -61,7 +61,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
             if startCool == False:
                 lastCool_trigger = time.perf_counter()
                 startCool = True
-            elif time.perf_counter() - lastCool_trigger >= DURATION_THRESHOLD*5:
+            elif time.perf_counter() - lastCool_trigger >= DURATION_THRESHOLD*3:
                 start = False
                 startCool = False
                 print("Cooling...")

@@ -6,7 +6,7 @@ class Config:
     AUDIO_CHUNK_MS = 70
 
     AUDIO_PLAYBACK_DELAY_S = 3.5
-    VIBRATION_DELAY_S = 3.0
+    VIBRATION_DELAY_S = 3.25
 
 
     VIB_OUT_SCALE = 100
