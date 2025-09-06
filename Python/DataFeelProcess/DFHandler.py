@@ -60,7 +60,9 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
 
         if tone_smooth >= TONE_THRESHOLD:
             # print("PreHeating...")
+            # print("PreHeating...")
             if start == False:
+                # print("Heating Count")
                 # print("Heating Count")
                 last_trigger = time.perf_counter()
                 start = True
@@ -68,6 +70,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 print("Heating...")
                 thermDiff = 4
         elif tone_smooth < TONE_THRESHOLD:
+            # print("PreCooling...")
             # print("PreCooling...")
             if startCool == False:
                 lastCool_trigger = time.perf_counter()
@@ -93,9 +96,23 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 # map int(val) from 0-1023 to 0-255
                 # led[i] = [int(val) // 4] * 3
                 led[i] = [255, 0, 0]
+        for i, val in enumerate(p):
+            if int(val)>60:
+                # led[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
+                # led[i] = [int(val), int(val), int(val)]
+                # map int(val) from 0-1023 to 0-255
+                # led[i] = [int(val) // 4] * 3
+                led[i] = [255, 0, 0]
 
         led1 = [[0,0,0]]*8
 
+        for i, val in enumerate(p1):
+            if int(val)>60:
+                # led[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
+                # led[i] = [int(val), int(val), int(val)]
+                # map int(val) from 0-1023 to 0-255
+                # led[i] = [int(val) // 4] * 3
+                led1[i] = [255, 0, 0]
         for i, val in enumerate(p1):
             if int(val)>60:
                 # led[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
@@ -118,8 +135,9 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
             q_cmd.put_nowait(("useToken", (t1, )))
             q_cmd.put_nowait(("useToken", (t2, )))
             q_cmd.put_nowait(("useToken", (t3, )))
+            q_cmd.put_nowait(("useToken", (t2, )))
+            q_cmd.put_nowait(("useToken", (t3, )))
             # print(time.perf_counter()-last)
-            # last = time.perf_counter()
 
         except pyqueue.Full:
             print("q_cmd full!!!")

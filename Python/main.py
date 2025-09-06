@@ -10,6 +10,8 @@ from DataProcess.DataHandler import dsp_therm, dsp_vib
 from SerialProcess.SerialHandler import read_from_serial
 from DataFeelCenter import DataFeelCenter, token
 
+import time
+
 def choose_port(default=None):
     ports = list(list_ports.comports())
     if not ports:
@@ -61,15 +63,15 @@ def main():
     p_serial.start()
 
     # workaround: because there's 5 mysterious data in q_pres, we clean them all first
-    # time.sleep(1)
-    # while not q_pres.empty():
-    #     q_pres.get_nowait()
-    # while not q_vib.empty():
-    #     q_vib.get_nowait()
-    # while not q_therm.empty():
-    #     q_therm.get_nowait()
-    # while not q_cmd.empty():
-    #     q_cmd.get_nowait()
+    time.sleep(1)
+    while not q_pres.empty():
+        q_pres.get_nowait()
+    while not q_vib.empty():
+        q_vib.get_nowait()
+    while not q_therm.empty():
+        q_therm.get_nowait()
+    while not q_cmd.empty():
+        q_cmd.get_nowait()
 
     print("Press 'q' then Enter to quit.")
     try:
