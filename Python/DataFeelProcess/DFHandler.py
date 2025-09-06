@@ -40,8 +40,8 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         # ------Thermal Feedback------------------
         tone_smooth = therm
 
-        TONE_THRESHOLD = 0.27
-        DURATION_THRESHOLD = 0.1
+        TONE_THRESHOLD = 0.24
+        DURATION_THRESHOLD = 0.15
 
         thermVal = None
         thermDiff = None
