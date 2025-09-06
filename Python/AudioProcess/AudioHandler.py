@@ -49,6 +49,9 @@ def AudioCapture(stop_evt: Event, q_audio_playback: Queue, q_audio_vib: Queue, q
 
         if (time.time() - start_time) > vibra_delay:  
             q_audio_vib.put_nowait(buffer.pop(0))
+        else:
+            q_audio_vib.put_nowait(arr)
+            print(arr)
 
         try:
             q_audio_therm.put_nowait(arr)
