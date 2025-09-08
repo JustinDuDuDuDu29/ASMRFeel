@@ -73,7 +73,6 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 last_trigger = time.perf_counter()
                 start = True
             elif time.perf_counter() - last_trigger >= DURATION_THRESHOLD:
-                print("Heating...")
                 thermDiff = 4
         elif tone_smooth < TONE_THRESHOLD:
             # print("PreCooling...")
@@ -84,7 +83,6 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
             elif time.perf_counter() - lastCool_trigger >= DURATION_THRESHOLD*3:
                 start = False
                 startCool = False
-                print("Cooling...")
                 thermDiff = 0
 
 
@@ -103,8 +101,6 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 led[i] = [int(val) // 4] * 3
                 # led[i] = [255, 0, 0]
 
-        if led == [[0,0,0]]*8:
-            led = None
 
         led1 = [[0,0,0]]*8
 
@@ -115,8 +111,6 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 # map int(val) from 0-1023 to 0-255
                 led1[i] = [int(val) // 4] * 3
                 # led1[i] = [255, 0, 0]
-        if led1 == [[0,0,0]]*8:
-            led1 = None
 
 
         # print(vib, therm)

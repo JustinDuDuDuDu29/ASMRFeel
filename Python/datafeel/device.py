@@ -245,7 +245,7 @@ class Dot:
             self.dev.serial.stopbits = 1
 
 
-        def set_all(self, ledLists: List[List[int]], therIntensity: float, vibFrequency: float, vibIntensity:float) -> float:
+        def set_all(self, ledLists: List[List[int]], therIntensity: float, vibFrequency: float, vibIntensity:float, checkTemp) -> float | None:
             vals = []
             for r, g, b in ledLists:
                 val = (b << 16) | (r << 8) | g 
@@ -297,9 +297,10 @@ class Dot:
             # self.dev.read_float(self.SINK_TEMP, 3, 2, modbus.BYTEORDER_LITTLE_SWAP)   
 
             self.dev.write_registers(registeraddress = self.LED_INDIVIDUAL_MANUAL_0, values=vals)
-            lsw, msw = self.dev.read_registers(registeraddress = self.SKIN_TEMP, number_of_registers=2)
-            return _from_IEEE754((msw<< 16) + lsw)
-            
+            if checkTemp:
+                lsw, msw = self.dev.read_registers(registeraddress = self.SKIN_TEMP, number_of_registers=2)
+                return _from_IEEE754((msw<< 16) + lsw)
+                
 
         def get_skin_temperature(self):
             """

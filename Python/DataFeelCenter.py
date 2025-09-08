@@ -21,6 +21,7 @@ class SuperDot(Dot):
         self.vibFrequency: float = 0
         self.vibIntensity: float = 0
         self.ledList: List[List[int]] = [[0,0,0]] * 8
+        self.checkCycle: int =  0
     
 
 # x =-12 
@@ -77,8 +78,12 @@ class DataFeelCenter():
             token.ledList = targetDot.ledList
         targetDot.ledList = token.ledList
 
+        targetDot.checkCycle += 1
+        targetDot.checkCycle %= 2
         # print(token)
-        targetDot.therCurrent = targetDot.registers.set_all(targetDot.ledList, therIntensity=token.therIntensity, vibFrequency=token.vibFrequency, vibIntensity=token.vibIntensity)
+        tmp = targetDot.registers.set_all(targetDot.ledList, therIntensity=token.therIntensity, vibFrequency=token.vibFrequency, vibIntensity=token.vibIntensity, checkTemp=targetDot.checkCycle)
+        if tmp is not None:
+            targetDot.therCurrent = tmp
         # if token.ledList is not None:
         #     self.led_Arr_no_timing(token.superDotID, token.ledList) 
         # if token.therIntensity:
