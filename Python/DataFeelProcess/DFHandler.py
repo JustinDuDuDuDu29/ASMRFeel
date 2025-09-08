@@ -40,7 +40,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
     last_trigger = time.perf_counter()
     lastCool_trigger = time.perf_counter()
     while not stop_evt.is_set():
-        print(q_pres.qsize(), q_vib.qsize(), q_therm.qsize())
+        # print(q_pres.qsize(), q_vib.qsize(), q_therm.qsize())
         t = q_pres.get()
         temp, pres1, pres2 = t.split(";")
         p = pres1.split(",")
@@ -53,7 +53,13 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
 
         TONE_THRESHOLD = 0.24
         DURATION_THRESHOLD = 0.15
+        vibFreq = None
+        if vib :
+            vibFreq = 10
 
+        vibFreq1 = None
+        if vib :
+            vibFreq1 = 10
         thermVal = None
         thermDiff = None
 
@@ -94,15 +100,11 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 # led[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
                 # led[i] = [int(val), int(val), int(val)]
                 # map int(val) from 0-1023 to 0-255
-                # led[i] = [int(val) // 4] * 3
-                led[i] = [255, 0, 0]
-        for i, val in enumerate(p):
-            if int(val)>60:
-                # led[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
-                # led[i] = [int(val), int(val), int(val)]
-                # map int(val) from 0-1023 to 0-255
-                # led[i] = [int(val) // 4] * 3
-                led[i] = [255, 0, 0]
+                led[i] = [int(val) // 4] * 3
+                # led[i] = [255, 0, 0]
+
+        if led == [[0,0,0]]*8:
+            led = None
 
         led1 = [[0,0,0]]*8
 
@@ -111,21 +113,16 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 # led[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
                 # led[i] = [int(val), int(val), int(val)]
                 # map int(val) from 0-1023 to 0-255
-                # led[i] = [int(val) // 4] * 3
-                led1[i] = [255, 0, 0]
-        for i, val in enumerate(p1):
-            if int(val)>60:
-                # led[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
-                # led[i] = [int(val), int(val), int(val)]
-                # map int(val) from 0-1023 to 0-255
-                # led[i] = [int(val) // 4] * 3
-                led1[i] = [255, 0, 0]
+                led1[i] = [int(val) // 4] * 3
+                # led1[i] = [255, 0, 0]
+        if led1 == [[0,0,0]]*8:
+            led1 = None
 
 
         # print(vib, therm)
         '''HeadPhone'''
-        t0 = token(superDotID = 2, vibFrequency=10, vibIntensity=vib, therIntensity=thermVal, therDiff=thermDiff, ledList=None)
-        t1 = token(superDotID = 3, vibFrequency=10, vibIntensity=vib, therIntensity=thermVal, therDiff=thermDiff, ledList=None)
+        t0 = token(superDotID = 2, vibFrequency=vibFreq, vibIntensity=vib, therIntensity=thermVal, therDiff=thermDiff, ledList=None)
+        t1 = token(superDotID = 3, vibFrequency=vibFreq1, vibIntensity=vib, therIntensity=thermVal, therDiff=thermDiff, ledList=None)
         '''Hand'''
         t2 = token(superDotID = 0, vibFrequency=None, vibIntensity=None, therIntensity=None, therDiff=None, ledList=led)
         t3 = token(superDotID = 1, vibFrequency=None, vibIntensity=None, therIntensity=None, therDiff=None, ledList=led1)
@@ -133,8 +130,6 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         try:
             q_cmd.put_nowait(("useToken", (t0, )))
             q_cmd.put_nowait(("useToken", (t1, )))
-            q_cmd.put_nowait(("useToken", (t2, )))
-            q_cmd.put_nowait(("useToken", (t3, )))
             q_cmd.put_nowait(("useToken", (t2, )))
             q_cmd.put_nowait(("useToken", (t3, )))
             # print(time.perf_counter()-last)

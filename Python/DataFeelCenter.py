@@ -44,7 +44,7 @@ class DataFeelCenter():
         self.superDotArr = self.discover_devices_Super(numOfDots)
 
     def useToken(self, token:token):
-        if token.superDotID is None:
+        if token.superDotID is None or (token.vibFrequency is None and token.vibIntensity is None and token.therDiff is None and token.therDiff is None and token.ledList is None):
             return
 
         targetDot = self.superDotArr[token.superDotID]
