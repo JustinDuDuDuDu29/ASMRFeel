@@ -238,14 +238,20 @@ class Dot:
         VIBRATION_SEQUENCE_4567 = 1046
 
         def __init__(self, port, id):
-            self.dev = modbus.Instrument(port, id, modbus.MODE_RTU)
+            self.dev = modbus.Instrument(port, id, modbus.MODE_RTU,close_port_after_each_call=False, debug=False)
+            self.dev.clear_buffers_before_each_transaction = True
             self.dev.serial.baudrate = 115200
             self.dev.serial.bytesize = 8    
             self.dev.serial.parity = serial.PARITY_NONE
             self.dev.serial.stopbits = 1
 
 
-        def set_all(self, ledLists: List[List[int]], therIntensity: float, vibFrequency: float, vibIntensity:float, checkTemp) -> float | None:
+        def get_skin_Temp_Quick(self) -> float :
+
+            lsw, msw = self.dev.read_registers(registeraddress = self.SKIN_TEMP, number_of_registers=2)
+            return _from_IEEE754((msw<< 16) + lsw)
+
+        def set_all(self, ledLists: List[List[int]], therIntensity: float, vibFrequency: float, vibIntensity:float) -> float :
             vals = []
             for r, g, b in ledLists:
                 val = (b << 16) | (r << 8) | g 
@@ -297,9 +303,8 @@ class Dot:
             # self.dev.read_float(self.SINK_TEMP, 3, 2, modbus.BYTEORDER_LITTLE_SWAP)   
 
             self.dev.write_registers(registeraddress = self.LED_INDIVIDUAL_MANUAL_0, values=vals)
-            if checkTemp:
-                lsw, msw = self.dev.read_registers(registeraddress = self.SKIN_TEMP, number_of_registers=2)
-                return _from_IEEE754((msw<< 16) + lsw)
+            lsw, msw = self.dev.read_registers(registeraddress = self.SKIN_TEMP, number_of_registers=2)
+            return _from_IEEE754((msw<< 16) + lsw)
                 
 
         def get_skin_temperature(self):

@@ -54,12 +54,17 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         TONE_THRESHOLD = 0.24
         DURATION_THRESHOLD = 0.15
         vibFreq = None
+
+        if vib < 0.1:
+            vib = 0
+
         if vib :
             vibFreq = 10
 
         vibFreq1 = None
         if vib :
             vibFreq1 = 10
+
         thermVal = None
         thermDiff = None
 
@@ -73,6 +78,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 last_trigger = time.perf_counter()
                 start = True
             elif time.perf_counter() - last_trigger >= DURATION_THRESHOLD:
+                print("Heating")
                 thermDiff = 4
         elif tone_smooth < TONE_THRESHOLD:
             # print("PreCooling...")
@@ -83,6 +89,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
             elif time.perf_counter() - lastCool_trigger >= DURATION_THRESHOLD*3:
                 start = False
                 startCool = False
+                print("Cooling")
                 thermDiff = 0
 
 
@@ -91,35 +98,50 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
 
         # print(f"pres {t1 - t0:.3f}s, vib {t2 - t1:.3f}s, therm {t3 - t2:.3f}s")
 
-        led = [[0,0,0]]*8
+        '''Hand'''
+        t2 = token(superDotID = 0, vibFrequency=0, vibIntensity=0, therIntensity=0, therDiff=0, ledList=[[0,0,0]]*8)
+        t3 = token(superDotID = 1, vibFrequency=0, vibIntensity=0, therIntensity=0, therDiff=0, ledList=[[0,0,0]]*8)
 
         for i, val in enumerate(p):
             if int(val)>60:
                 # led[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
                 # led[i] = [int(val), int(val), int(val)]
                 # map int(val) from 0-1023 to 0-255
-                led[i] = [int(val) // 4] * 3
-                # led[i] = [255, 0, 0]
+                # led[i] = [int(val) // 4] * 3
 
+                if t2.vibIntensity is not None:
+                    t2.vibFrequency = 10
+                    t2.vibIntensity= max(t2.vibIntensity, int(val) / 1023.0)
+                else: 
+                    t2.vibFrequency = 10
+                if t2.ledList is None:
+                    t2.ledList = [[0,0,0]] * 8
+                # t2.ledList[i] = [int(val) // 4] * 3
 
-        led1 = [[0,0,0]]*8
+                t2.ledList[i] = [255, 0, 0]
 
         for i, val in enumerate(p1):
             if int(val)>60:
                 # led[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
                 # led[i] = [int(val), int(val), int(val)]
                 # map int(val) from 0-1023 to 0-255
-                led1[i] = [int(val) // 4] * 3
-                # led1[i] = [255, 0, 0]
+
+                if t3.vibIntensity is not None:
+                    t3.vibFrequency = 10
+                    t3.vibIntensity= max(t3.vibIntensity, int(val) / 1023.0)
+                else: 
+                    t2.vibFrequency = 10
+                if t3.ledList is None:
+                    t3.ledList = [[0,0,0]] * 8
+                # t3.ledList[i] = [int(val) // 4] * 3
+                
+                t3.ledList[i] = [255, 0, 0]
 
 
         # print(vib, therm)
         '''HeadPhone'''
         t0 = token(superDotID = 2, vibFrequency=vibFreq, vibIntensity=vib, therIntensity=thermVal, therDiff=thermDiff, ledList=None)
         t1 = token(superDotID = 3, vibFrequency=vibFreq1, vibIntensity=vib, therIntensity=thermVal, therDiff=thermDiff, ledList=None)
-        '''Hand'''
-        t2 = token(superDotID = 0, vibFrequency=None, vibIntensity=None, therIntensity=None, therDiff=None, ledList=led)
-        t3 = token(superDotID = 1, vibFrequency=None, vibIntensity=None, therIntensity=None, therDiff=None, ledList=led1)
         # print(t0)
         try:
             q_cmd.put_nowait(("useToken", (t0, )))

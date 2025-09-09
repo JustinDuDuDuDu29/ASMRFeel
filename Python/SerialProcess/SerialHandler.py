@@ -1,8 +1,14 @@
 from multiprocessing.synchronize import Event
 from multiprocessing import  Process, Queue
+
+from numpy import put
+from Config import Config
 from DataFeelCenter import DataFeelCenter, token
 import serial
+import time
 import queue as pyqueue
+
+zeroStr = "1;0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0"
 
 def read_from_serial(stop_evt: Event, q:Queue, port: str, baud: int = 115200):
     """Line-framed reader. Reconnects on failure."""
@@ -14,6 +20,8 @@ def read_from_serial(stop_evt: Event, q:Queue, port: str, baud: int = 115200):
                 # ser.set_buffer_size(rx_size=0, tx_size=0)
                 ser.reset_input_buffer()
                 
+                buffer = []
+                start_time = time.time()
                 # read buffer size
                 while not stop_evt.is_set():
                     try:
@@ -24,11 +32,18 @@ def read_from_serial(stop_evt: Event, q:Queue, port: str, baud: int = 115200):
                         if line:
                             d = line.rstrip(b"\r\n").decode("utf-8")
                             # q.put(d)
+                            buffer.append(d)
 
 
                             # workaround: because arduino clock is different from pc, we need to adjust the timing
                             try:
-                                q.put_nowait(d)
+                                
+                                # if (time.time() - start_time) > Config.AUDIO_PLAYBACK_DELAY_S:  
+                                    q.put_nowait(buffer.pop(0))
+                                #
+                                # else: 
+                                #     q.put_nowait(zeroStr)
+
                             except pyqueue.Full:
                                 try:
                                     q.get_nowait()

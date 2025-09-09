@@ -44,46 +44,50 @@ class DataFeelCenter():
     def __init__(self, numOfDots):
         self.superDotArr = self.discover_devices_Super(numOfDots)
 
+
     def useToken(self, token:token):
-        if token.superDotID is None or (token.vibFrequency is None and token.vibIntensity is None and token.therDiff is None and token.therDiff is None and token.ledList is None):
+        if token.superDotID is None or (token.vibFrequency is None and token.vibIntensity is None and token.therIntensity is None and token.therDiff is None and token.ledList is None):
             return
 
         targetDot = self.superDotArr[token.superDotID]
 
+
         if token.therDiff is not None:
             diff = targetDot.therCurrent - (targetDot.therBase + token.therDiff)
-            if diff > 0.2:
+            if diff > 0.15:
                 token.therIntensity = max(-1.0, -diff)
-            elif diff < -0.2:
+            elif diff < -0.15:
                 token.therIntensity = min(1.0, abs(diff))
             else:
                 token.therIntensity = 0
 
+
+
         if token.therIntensity is None:
             token.therIntensity = targetDot.therIntehsity
-        targetDot.therIntehsity = token.therIntensity
-        
+
         if token.vibFrequency is None:
             token.vibFrequency = targetDot.vibFrequency
-        targetDot.vibFrequency= token.vibFrequency
-            
+
         if token.vibIntensity is None:
-            token.vibIntensity= targetDot.vibIntensity
-        # if(token.vibIntensity < .3):
-        #     token.vibIntensity = 0
+            token.vibIntensity = targetDot.vibIntensity
         token.vibIntensity = min(abs(token.vibIntensity), 1)
-        targetDot.vibIntensity= token.vibIntensity
 
         if token.ledList is None:
             token.ledList = targetDot.ledList
+
+        if targetDot.vibFrequency == token.vibFrequency and targetDot.ledList == token.ledList and targetDot.vibIntensity == targetDot.vibIntensity and targetDot.therIntehsity == token.therIntensity:
+            # same 
+            print("same")
+            targetDot.therCurrent = targetDot.registers.get_skin_Temp_Quick()
+            return
+
+        targetDot.therIntehsity = token.therIntensity
+        targetDot.vibFrequency = token.vibFrequency
+        targetDot.vibIntensity = token.vibIntensity
         targetDot.ledList = token.ledList
 
-        targetDot.checkCycle += 1
-        targetDot.checkCycle %= 2
-        # print(token)
-        tmp = targetDot.registers.set_all(targetDot.ledList, therIntensity=token.therIntensity, vibFrequency=token.vibFrequency, vibIntensity=token.vibIntensity, checkTemp=targetDot.checkCycle)
-        if tmp is not None:
-            targetDot.therCurrent = tmp
+        targetDot.therCurrent = targetDot.registers.set_all(targetDot.ledList, therIntensity=token.therIntensity, vibFrequency=token.vibFrequency, vibIntensity=token.vibIntensity)
         # if token.ledList is not None:
         #     self.led_Arr_no_timing(token.superDotID, token.ledList) 
         # if token.therIntensity:

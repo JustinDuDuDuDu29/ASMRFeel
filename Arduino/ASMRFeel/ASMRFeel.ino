@@ -11,7 +11,7 @@ unsigned long lastDebounceTime = 0;
 unsigned long debounceDelay = 50;
 unsigned long previousMillis = 0;
 int LED = 13;
-const long interval = 100;
+const long interval = 70;
 bool hot = true;
 void setup() {
   pinMode(pin_Out_S0, OUTPUT);
