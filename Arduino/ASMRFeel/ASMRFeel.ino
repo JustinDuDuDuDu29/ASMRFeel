@@ -8,10 +8,10 @@ int btn = 10;
 int buttonState;
 int lastButtonState = LOW;
 unsigned long lastDebounceTime = 0;
-unsigned long debounceDelay = 50;
+unsigned long debounceDelay = 2;
 unsigned long previousMillis = 0;
 int LED = 13;
-const long interval = 70;
+const long interval = 100;
 bool hot = true;
 void setup() {
   pinMode(pin_Out_S0, OUTPUT);
@@ -49,12 +49,7 @@ void loop() {
   if (currentMillis - previousMillis >= interval) {
     updateMux();
     String line = "";
-    // for (int i = 0; i < 8; i++) {
-    //   line += String(Mux1_State[i]);
-    //   if (i < 7) {
-    //     line += ",";
-    //   }
-    // }
+    
     if (hot) {
       line += "1;";
     } else {
