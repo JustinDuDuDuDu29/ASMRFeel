@@ -53,9 +53,9 @@ class DataFeelCenter():
 
         if token.therDiff is not None:
             diff = targetDot.therCurrent - (targetDot.therBase + token.therDiff)
-            if diff > 0.15:
+            if diff > 0.2:
                 token.therIntensity = max(-1.0, -diff)
-            elif diff < -0.15:
+            elif diff < -0.2:
                 token.therIntensity = min(1.0, abs(diff))
             else:
                 token.therIntensity = 0

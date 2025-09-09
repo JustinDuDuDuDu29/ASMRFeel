@@ -52,7 +52,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         tone_smooth = therm
 
         TONE_THRESHOLD = 0.24
-        DURATION_THRESHOLD = 0.15
+        DURATION_THRESHOLD = 0.5
         vibFreq = 0
 
         if vib < 0.3:
