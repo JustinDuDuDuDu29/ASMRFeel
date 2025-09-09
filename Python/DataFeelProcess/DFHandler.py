@@ -56,8 +56,8 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         vibFreq = 0
         vibFreq1 = 0
 
-        if vib < 0.3:
-            vib = 0
+        # if vib < 0.3:
+        #     vib = 0
 
         if vib > 0:
             vibFreq = 10
@@ -77,7 +77,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 start = True
             elif time.perf_counter() - last_trigger >= DURATION_THRESHOLD:
                 print("Heating")
-                thermDiff = 4
+                thermDiff = 2
         elif tone_smooth < TONE_THRESHOLD:
             # print("PreCooling...")
             # print("PreCooling...")
@@ -147,8 +147,8 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
             print(q_cmd.qsize())
             q_cmd.put_nowait(("useToken", (t0, )))
             q_cmd.put_nowait(("useToken", (t1, )))
-            q_cmd.put_nowait(("useToken", (t2, )))
-            q_cmd.put_nowait(("useToken", (t3, )))
+            # q_cmd.put_nowait(("useToken", (t2, )))
+            # q_cmd.put_nowait(("useToken", (t3, )))
             # print(time.perf_counter()-last)
 
         except pyqueue.Full:

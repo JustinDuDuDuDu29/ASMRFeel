@@ -8,7 +8,7 @@ class Config:
     AUDIO_PLAYBACK_DELAY_S = 3
     VIBRATION_DELAY_S = 3
 
-    VIB_OUT_SCALE = 100
+    VIB_OUT_SCALE = 20
 
 
     THERM_OUT_SCALE = 1
