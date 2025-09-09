@@ -54,15 +54,13 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         TONE_THRESHOLD = 0.24
         DURATION_THRESHOLD = 0.5
         vibFreq = 0
+        vibFreq1 = 0
 
         if vib < 0.3:
             vib = 0
 
-        if vib :
+        if vib > 0:
             vibFreq = 10
-
-        vibFreq1 = None
-        if vib :
             vibFreq1 = 10
 
         thermVal = None
@@ -141,7 +139,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         # print(vib, therm)
         '''HeadPhone'''
 
-        t0 = token(superDotID = 2, vibFrequency=vibFreq, vibIntensity=vib, therIntensity=thermVal, therDiff=thermDiff, ledList=None)
+        t0 = token(superDotID = 2, vibFrequency=vibFreq, vibIntensity=vib, therIntensity=thermVal, therDiff=thermDiff, ledList=[[255,0,0]]*8)
         t1 = token(superDotID = 3, vibFrequency=vibFreq1, vibIntensity=vib, therIntensity=thermVal, therDiff=thermDiff, ledList=None)
         # print(t0)
         # print(t0)
