@@ -147,8 +147,8 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
             print(q_cmd.qsize())
             q_cmd.put_nowait(("useToken", (t0, )))
             q_cmd.put_nowait(("useToken", (t1, )))
-            # q_cmd.put_nowait(("useToken", (t2, )))
-            # q_cmd.put_nowait(("useToken", (t3, )))
+            q_cmd.put_nowait(("useToken", (t2, )))
+            q_cmd.put_nowait(("useToken", (t3, )))
             # print(time.perf_counter()-last)
 
         except pyqueue.Full:
