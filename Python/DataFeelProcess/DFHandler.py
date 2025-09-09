@@ -40,7 +40,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
     last_trigger = time.perf_counter()
     lastCool_trigger = time.perf_counter()
     while not stop_evt.is_set():
-        # print(q_pres.qsize(), q_vib.qsize(), q_therm.qsize())
+        print(q_pres.qsize(), q_vib.qsize(), q_therm.qsize())
         t = q_pres.get()
         temp, pres1, pres2 = t.split(";")
         p = pres1.split(",")
