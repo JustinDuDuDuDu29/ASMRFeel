@@ -79,7 +79,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 start = True
             elif time.perf_counter() - last_trigger >= DURATION_THRESHOLD:
                 print("Heating")
-                thermDiff = 4
+                thermDiff = 2
         elif tone_smooth < TONE_THRESHOLD:
             # print("PreCooling...")
             # print("PreCooling...")
