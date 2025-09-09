@@ -53,9 +53,9 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
 
         TONE_THRESHOLD = 0.24
         DURATION_THRESHOLD = 0.15
-        vibFreq = None
+        vibFreq = 0
 
-        if vib < 0.1:
+        if vib < 0.3:
             vib = 0
 
         if vib :
@@ -116,9 +116,9 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                     t2.vibFrequency = 10
                 if t2.ledList is None:
                     t2.ledList = [[0,0,0]] * 8
-                # t2.ledList[i] = [int(val) // 4] * 3
+                t2.ledList[i] = [int(val) // 4] * 3
 
-                t2.ledList[i] = [255, 0, 0]
+                # t2.ledList[i] = [255, 0, 0]
 
         for i, val in enumerate(p1):
             if int(val)>60:
@@ -133,17 +133,20 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                     t2.vibFrequency = 10
                 if t3.ledList is None:
                     t3.ledList = [[0,0,0]] * 8
-                # t3.ledList[i] = [int(val) // 4] * 3
+                t3.ledList[i] = [int(val) // 4] * 3
                 
-                t3.ledList[i] = [255, 0, 0]
+                # t3.ledList[i] = [255, 0, 0]
 
 
         # print(vib, therm)
         '''HeadPhone'''
+
         t0 = token(superDotID = 2, vibFrequency=vibFreq, vibIntensity=vib, therIntensity=thermVal, therDiff=thermDiff, ledList=None)
         t1 = token(superDotID = 3, vibFrequency=vibFreq1, vibIntensity=vib, therIntensity=thermVal, therDiff=thermDiff, ledList=None)
         # print(t0)
+        # print(t0)
         try:
+            print(q_cmd.qsize())
             q_cmd.put_nowait(("useToken", (t0, )))
             q_cmd.put_nowait(("useToken", (t1, )))
             q_cmd.put_nowait(("useToken", (t2, )))

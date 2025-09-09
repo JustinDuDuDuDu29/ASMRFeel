@@ -48,7 +48,6 @@ class DataFeelCenter():
     def useToken(self, token:token):
         if token.superDotID is None or (token.vibFrequency is None and token.vibIntensity is None and token.therIntensity is None and token.therDiff is None and token.ledList is None):
             return
-
         targetDot = self.superDotArr[token.superDotID]
 
 
@@ -71,14 +70,18 @@ class DataFeelCenter():
 
         if token.vibIntensity is None:
             token.vibIntensity = targetDot.vibIntensity
-        token.vibIntensity = min(abs(token.vibIntensity), 1)
+        # token.vibIntensity = min(abs(token.vibIntensity), 1)
 
         if token.ledList is None:
             token.ledList = targetDot.ledList
 
         if targetDot.vibFrequency == token.vibFrequency and targetDot.ledList == token.ledList and targetDot.vibIntensity == targetDot.vibIntensity and targetDot.therIntehsity == token.therIntensity:
             # same 
-            print("same")
+            # print("same")
+            targetDot.therIntehsity = token.therIntensity
+            targetDot.vibFrequency = token.vibFrequency
+            targetDot.vibIntensity = token.vibIntensity
+            targetDot.ledList = token.ledList
             targetDot.therCurrent = targetDot.registers.get_skin_Temp_Quick()
             return
 

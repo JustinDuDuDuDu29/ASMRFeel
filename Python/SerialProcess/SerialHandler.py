@@ -18,6 +18,7 @@ def read_from_serial(stop_evt: Event, q:Queue, port: str, baud: int = 115200):
             with serial.Serial(port, baudrate=baud, timeout=1) as ser:
                 # set receive buffer to 1
                 # ser.set_buffer_size(rx_size=0, tx_size=0)
+                
                 ser.reset_input_buffer()
                 
                 buffer = []
@@ -32,17 +33,18 @@ def read_from_serial(stop_evt: Event, q:Queue, port: str, baud: int = 115200):
                         if line:
                             d = line.rstrip(b"\r\n").decode("utf-8")
                             # q.put(d)
+                            # print(d)
                             buffer.append(d)
-
+                            # print(f"queue size: {q.qsize()}")
 
                             # workaround: because arduino clock is different from pc, we need to adjust the timing
                             try:
                                 
-                                # if (time.time() - start_time) > Config.AUDIO_PLAYBACK_DELAY_S:  
+                                if (time.time() - start_time) > Config.AUDIO_PLAYBACK_DELAY_S:  
                                     q.put_nowait(buffer.pop(0))
                                 #
-                                # else: 
-                                #     q.put_nowait(zeroStr)
+                                else: 
+                                    q.put_nowait(zeroStr)
 
                             except pyqueue.Full:
                                 try:

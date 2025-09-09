@@ -38,7 +38,7 @@ def main():
     q_audio_vib = Queue(maxsize=1)
     q_audio_therm = Queue(maxsize=1)
 
-    q_pres = Queue(maxsize=1)
+    q_pres = Queue()
     q_vib = Queue()
     q_therm = Queue()
     q_cmd = Queue()
@@ -63,7 +63,7 @@ def main():
     p_serial.start()
 
     # workaround: because there's 5 mysterious data in q_pres, we clean them all first
-    time.sleep(1)
+    time.sleep(3)
     while not q_pres.empty():
         q_pres.get_nowait()
     while not q_vib.empty():
