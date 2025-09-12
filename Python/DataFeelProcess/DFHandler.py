@@ -25,8 +25,8 @@ def Worker(stop_evt:Event, q_cmd: Queue):
         #     break
     
     '''Cool Down'''
-    t0 = token(superDotID = 2, vibFrequency=20, vibIntensity=None, therIntensity=None, therDiff=-3, ledList=None)
-    t1 = token(superDotID = 3, vibFrequency=20, vibIntensity=None, therIntensity=None, therDiff=-3, ledList=None)
+    t0 = token(superDotID = 2, vibFrequency=20, vibIntensity=None, heatup=False, ledList=None)
+    t1 = token(superDotID = 3, vibFrequency=20, vibIntensity=None, heatup=False, ledList=None)
     cmd = ("useToken", (t0, ))
     cmd2 = ("useToken", (t1, ))
     method, args = cmd
@@ -64,7 +64,8 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
             vibFreq1 = 10
 
         thermVal = None
-        thermDiff = None
+        heatup = False
+        # thermDiff = None
 
 
         if tone_smooth >= TONE_THRESHOLD:
@@ -77,7 +78,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 start = True
             elif time.perf_counter() - last_trigger >= DURATION_THRESHOLD:
                 print("Heating")
-                thermDiff = 2
+                heatup = True
         elif tone_smooth < TONE_THRESHOLD:
             # print("PreCooling...")
             # print("PreCooling...")
@@ -88,7 +89,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 start = False
                 startCool = False
                 print("Cooling")
-                thermDiff = 0
+                heatup = False
 
 
         # print(q_pres.empty(), q_vib.empty(), q_therm.empty())
@@ -97,8 +98,8 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         # print(f"pres {t1 - t0:.3f}s, vib {t2 - t1:.3f}s, therm {t3 - t2:.3f}s")
 
         '''Hand'''
-        t2 = token(superDotID = 0, vibFrequency=0, vibIntensity=0, therIntensity=0, therDiff=0, ledList=[[0,0,0]]*8)
-        t3 = token(superDotID = 1, vibFrequency=0, vibIntensity=0, therIntensity=0, therDiff=0, ledList=[[0,0,0]]*8)
+        t2 = token(superDotID = 0, vibFrequency=0, vibIntensity=0, heatup=False, ledList=[[0,0,0]]*8)
+        t3 = token(superDotID = 1, vibFrequency=0, vibIntensity=0, heatup=False, ledList=[[0,0,0]]*8)
 
         for i, val in enumerate(p):
             if int(val)>60:
@@ -139,8 +140,8 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         # print(vib, therm)
         '''HeadPhone'''
 
-        t0 = token(superDotID = 2, vibFrequency=vibFreq, vibIntensity=vib, therIntensity=thermVal, therDiff=thermDiff, ledList=[[255,0,0]]*8)
-        t1 = token(superDotID = 3, vibFrequency=vibFreq1, vibIntensity=vib, therIntensity=thermVal, therDiff=thermDiff, ledList=None)
+        t0 = token(superDotID = 2, vibFrequency=vibFreq, vibIntensity=vib, heatup=heatup, ledList=[[255,0,0]]*8)
+        t1 = token(superDotID = 3, vibFrequency=vibFreq1, vibIntensity=vib, heatup=heatup, ledList=None)
         # print(t0)
         # print(t0)
         try:

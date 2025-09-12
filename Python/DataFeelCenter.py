@@ -21,20 +21,17 @@ class SuperDot(Dot):
         self.vibFrequency: float = 0
         self.vibIntensity: float = 0
         self.ledList: List[List[int]] = [[0,0,0]] * 8
-        self.checkCycle: int =  0
+        self.heatTimer: float | None =  None
     
 
-# x =-12 
-# aaa = struct.unpack('>I', struct.pack('>f', x))[0]
-# print(bin(aaa))
-# print(bin(aaa & 0xFFFF))
-# print(bin(aaa >> 16))
+
 
 @dataclass
 class token:
     superDotID: int | None = None 
+    heatup: bool | None = None  
     therIntensity: float | None = None 
-    therDiff: float | None = None 
+    # therDiff: float | None = None 
     vibFrequency: float | None = None 
     vibIntensity: float | None = None 
     ledList: List[List[int]] | None =  None
@@ -46,24 +43,43 @@ class DataFeelCenter():
 
 
     def useToken(self, token:token):
-        if token.superDotID is None or (token.vibFrequency is None and token.vibIntensity is None and token.therIntensity is None and token.therDiff is None and token.ledList is None):
+        if token.superDotID is None or (token.vibFrequency is None and token.vibIntensity is None and token.therIntensity is None and token.ledList is None):
             return
         targetDot = self.superDotArr[token.superDotID]
 
+        if token.heatup is not None:
+            if targetDot.heatTimer is None:
+                targetDot.heatTimer = time.time()
 
-        if token.therDiff is not None:
-            diff = targetDot.therCurrent - (targetDot.therBase + token.therDiff)
-            if diff > 0.2:
-                token.therIntensity = max(-1.0, -diff)
-            elif diff < -0.2:
-                token.therIntensity = min(1.0, abs(diff))
+            if token.heatup:
+                if time.time() - targetDot.heatTimer < 3:
+                    print("Heating up...")
+                    token.therIntensity = 1.0
+                else:
+                    print("Heat controlling...")
+                    token.therIntensity = 0.2
             else:
+                targetDot.heatTimer = None
                 token.therIntensity = 0
+        else:
+            print("no heatup info!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            targetDot.heatTimer = None 
+            token.therIntensity = 0
+        
+                
+        # if token.therDiff is not None:
+        #     diff = targetDot.therCurrent - (targetDot.therBase + token.therDiff)
+        #     if diff > 0.2:
+        #         token.therIntensity = max(-1.0, -diff)
+        #     elif diff < -0.2:
+        #         token.therIntensity = min(1.0, abs(diff))
+        #     else:
+        #         token.therIntensity = 0
 
 
 
-        if token.therIntensity is None:
-            token.therIntensity = targetDot.therIntehsity
+        # if token.therIntensity is None:
+        #     token.therIntensity = targetDot.therIntehsity
 
         if token.vibFrequency is None:
             token.vibFrequency = targetDot.vibFrequency
@@ -85,7 +101,7 @@ class DataFeelCenter():
             targetDot.vibFrequency = token.vibFrequency
             targetDot.vibIntensity = token.vibIntensity
             targetDot.ledList = token.ledList
-            targetDot.therCurrent = targetDot.registers.get_skin_Temp_Quick()
+            # targetDot.therCurrent = targetDot.registers.get_skin_Temp_Quick()
             return
 
         targetDot.therIntehsity = token.therIntensity

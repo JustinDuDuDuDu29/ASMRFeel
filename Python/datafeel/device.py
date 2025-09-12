@@ -301,10 +301,15 @@ class Dot:
 
             
             # self.dev.read_float(self.SINK_TEMP, 3, 2, modbus.BYTEORDER_LITTLE_SWAP)   
-
+            # st = time()
             self.dev.write_registers(registeraddress = self.LED_INDIVIDUAL_MANUAL_0, values=vals)
-            lsw, msw = self.dev.read_registers(registeraddress = self.SKIN_TEMP, number_of_registers=2)
-            return _from_IEEE754((msw<< 16) + lsw)
+            # st2 = time()
+            # if re:
+            #     print(f"write time: {st2 - st}")
+            #     lsw, msw = self.dev.read_registers(registeraddress = self.SKIN_TEMP, number_of_registers=2)
+            #     print(f"read time: {time() - st2}")
+            #     return _from_IEEE754((msw<< 16) + lsw)
+            return 32
                 
 
         def get_skin_temperature(self):

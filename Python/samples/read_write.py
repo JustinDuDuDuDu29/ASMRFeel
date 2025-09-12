@@ -7,16 +7,19 @@ device = devices[0]
 print("found", len(devices), "devices")
 import inspect
 
-m = device.registers.set_thermal_mode
-print(m)  # bound method repr
-print("FILE :", m.__func__.__code__.co_filename)
-print("LINE :", m.__func__.__code__.co_firstlineno)
-print("MODULE:", m.__module__)
+# m = device.registers.set_thermal_mode
+# print(m)  # bound method repr
+
 
 # show the source we’re actually running
-print(inspect.getsource(m))
-device.registers.set_thermal_mode(ThermalMode.OFF)
-sleep(5)
+# print(inspect.getsource(m))
+device.registers.set_thermal_mode(ThermalMode.MANUAL)
+device.registers.set_thermal_intensity(1.0)
+sleep(3)
+# device.registers.set_thermal_intensity(0.0)
+device.registers.set_thermal_intensity(0.2)
+# sleep(2.5)
+# device.registers.set_thermal_intensity(0)
 # # Set the global LED color
 # device.set_led(255, 0, 0)
 # sleep(1)
