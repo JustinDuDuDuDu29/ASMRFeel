@@ -49,48 +49,61 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         therm = q_therm.get()
 
         # ------Thermal Feedback------------------
-        tone_smooth = therm
+        toneLeft = therm[0]
+        toneRight = therm[1]
 
         TONE_THRESHOLD = 0.24
         DURATION_THRESHOLD = 0.5
-        vibFreq = 0
-        vibFreq1 = 0
+        vibFreqLeft = 0
+        vibFreqRight = 0
 
         # if vib < 0.3:
         #     vib = 0
 
-        if vib > 0:
-            vibFreq = 10
-            vibFreq1 = 10
-
-        thermVal = None
-        heatup = False
-        # thermDiff = None
+        if vib[0] > 0:
+            vibFreqLeft = 100
+        if vib[1] > 0:
+            vibFreqRight = 100
 
 
-        if tone_smooth >= TONE_THRESHOLD:
-            # print("PreHeating...")
-            # print("PreHeating...")
+        heatUpLeft = False
+        heatUpRight = False
+
+        if toneLeft >= TONE_THRESHOLD:
             if start == False:
-                # print("Heating Count")
-                # print("Heating Count")
                 last_trigger = time.perf_counter()
                 start = True
             elif time.perf_counter() - last_trigger >= DURATION_THRESHOLD:
-                print("Heating")
-                heatup = True
-        elif tone_smooth < TONE_THRESHOLD:
-            # print("PreCooling...")
-            # print("PreCooling...")
+                print("Heating Left")
+                heatUpLeft = True
+        elif toneLeft < TONE_THRESHOLD:
             if startCool == False:
                 lastCool_trigger = time.perf_counter()
                 startCool = True
             elif time.perf_counter() - lastCool_trigger >= DURATION_THRESHOLD*3:
                 start = False
                 startCool = False
-                print("Cooling")
-                heatup = False
+                print("Cooling Left")
+                heatUpLeft = False
 
+
+
+        if toneRight >= TONE_THRESHOLD:
+            if start == False:
+                last_trigger = time.perf_counter()
+                start = True
+            elif time.perf_counter() - last_trigger >= DURATION_THRESHOLD:
+                print("Heating Right")
+                heatUpRight = True
+        elif toneRight < TONE_THRESHOLD:
+            if startCool == False:
+                lastCool_trigger = time.perf_counter()
+                startCool = True
+            elif time.perf_counter() - lastCool_trigger >= DURATION_THRESHOLD*3:
+                start = False
+                startCool = False
+                print("Cooling Right")
+                heatUpRight = False
 
         # print(q_pres.empty(), q_vib.empty(), q_therm.empty())
         # print(q_pres.qsize(), q_vib.qsize(), q_therm.qsize())
@@ -140,8 +153,8 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         # print(vib, therm)
         '''HeadPhone'''
 
-        t0 = token(superDotID = 2, vibFrequency=vibFreq, vibIntensity=vib, heatup=heatup, ledList=[[255,0,0]]*8)
-        t1 = token(superDotID = 3, vibFrequency=vibFreq1, vibIntensity=vib, heatup=heatup, ledList=None)
+        t0 = token(superDotID = 2, vibFrequency=vibFreqLeft, vibIntensity=vib[0], heatup=heatUpLeft, ledList=[[255,0,0]]*8)
+        t1 = token(superDotID = 3, vibFrequency=vibFreqRight, vibIntensity=vib[1], heatup=heatUpRight, ledList=None)
         # print(t0)
         # print(t0)
         try:

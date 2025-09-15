@@ -37,6 +37,8 @@ def AudioCapture(stop_evt: Event, q_audio_playback: Queue, q_audio_vib: Queue, q
     while not stop_evt.is_set():
         data = stream.read(framesize, exception_on_overflow=False)
         arr = np.frombuffer(data, dtype=np.float32)
+        if Config.MIMIC_STEREO:
+            arr = np.stack([arr, arr], axis=0)
         try:
             q_audio_playback.put_nowait(arr)
         except pyqueue.Full:
@@ -68,7 +70,7 @@ def AudioPlayback(stop_evt: Event, q_audio_playback: Queue, playback_delay=Confi
     """Play audio from q_audio with a delay (default 300ms)."""
     pa = pyaudio.PyAudio()
     stream = pa.open(format=pyaudio.paFloat32,
-                     channels=1,
+                     channels=2,
                      rate=sr,
                      output=True,
                      output_device_index=Config.OUTPUT_DEVICE_INDEX)
@@ -85,7 +87,9 @@ def AudioPlayback(stop_evt: Event, q_audio_playback: Queue, playback_delay=Confi
 
         # Wait until playback_delay has passed
         if buffer and (time.time() - start_time) > playback_delay:
-            stream.write(buffer.pop(0).tobytes())
+            # play stereo audio Transpose stereo data from (2, framesize) to (framesize, 2) 
+            data = buffer.pop(0).T.tobytes()
+            stream.write(data)
 
     stream.stop_stream()
     stream.close()

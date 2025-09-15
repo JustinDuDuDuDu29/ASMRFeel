@@ -12,3 +12,6 @@ class Config:
 
 
     THERM_OUT_SCALE = 1
+
+    
+    MIMIC_STEREO = True

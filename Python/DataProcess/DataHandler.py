@@ -19,11 +19,18 @@ def dsp_vib(stop_evt: Event, q_audio_vib: Queue, q_vib: Queue):
     while not stop_evt.is_set():
         try:
             arr = q_audio_vib.get(timeout=0.1)
-            rms = float(np.sqrt(np.mean(arr**2)))
-            vib_level = rms * Config.VIB_OUT_SCALE
+            left = arr[0] if arr.ndim > 1 else arr
+            right = arr[1] if arr.ndim > 1 else arr
+
+
+            
+            leftRms = float(np.sqrt(np.mean(left**2)))
+            rightRms = float(np.sqrt(np.mean(right**2)))
+            leftVib = leftRms * Config.VIB_OUT_SCALE
+            rightVib = rightRms * Config.VIB_OUT_SCALE
             try:
                 # print(f"vib_level: {vib_level}")
-                q_vib.put_nowait(vib_level)
+                q_vib.put_nowait((leftVib, rightVib))
             except pyqueue.Full:
                 print("q_vib full!!!")
         except pyqueue.Empty:
@@ -91,6 +98,8 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
     while not stop_evt.is_set():
         try:
             arr = q_audio_therm.get(timeout=0.1)
+            # TODO: temporarily only use one channel
+            arr = arr[0]
         except pyqueue.Empty:
             # no new audio; just loop
             continue
@@ -114,7 +123,8 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
         # tone_plot.update(tone_mix, tone_smooth)
         therm = tone_smooth * Config.THERM_OUT_SCALE
         try:
-            q_therm.put_nowait(therm)
+            # TODO: temporarily copy channel
+            q_therm.put_nowait((therm, therm))
         except pyqueue.Full:
             # if consumer is lagging, drop (we only want freshest)
             print("q_therm full!!!")
