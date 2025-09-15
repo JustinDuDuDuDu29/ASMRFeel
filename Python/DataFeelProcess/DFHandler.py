@@ -34,7 +34,7 @@ def Worker(stop_evt:Event, q_cmd: Queue):
     method, args = cmd2
     getattr(dfc, method)(*args)
 
-def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Queue):
+def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Queue, q_unity:Queue):
     start = False
     startCool = False
     last_trigger = time.perf_counter()
@@ -150,6 +150,10 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
             q_cmd.put_nowait(("useToken", (t1, )))
             q_cmd.put_nowait(("useToken", (t2, )))
             q_cmd.put_nowait(("useToken", (t3, )))
+            q_unity.put_nowait(("useToken", (t0, )))
+            q_unity.put_nowait(("useToken", (t1, )))
+            q_unity.put_nowait(("useToken", (t2, )))
+            q_unity.put_nowait(("useToken", (t3, )))
             # print(time.perf_counter()-last)
 
         except pyqueue.Full:

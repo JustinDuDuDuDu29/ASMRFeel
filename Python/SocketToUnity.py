@@ -30,7 +30,8 @@ def SocketToUnity(stop_evt: Event, unityQueue: Queue):
                         recv = unityQueue.get()
                         if not recv:
                             continue
-                        conn.sendall(bytes(recv, "utf-8"))
+                        
+                        conn.sendall(bytes(str(recv), "utf-8"))
                         print("sent")
                 
             

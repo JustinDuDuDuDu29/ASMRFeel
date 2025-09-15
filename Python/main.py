@@ -9,6 +9,7 @@ from DataFeelProcess.DFHandler import Worker, Commander
 from DataProcess.DataHandler import dsp_therm, dsp_vib
 from SerialProcess.SerialHandler import read_from_serial
 from DataFeelCenter import DataFeelCenter, token
+from SocketToUnity import SocketToUnity
 
 import time
 
@@ -42,15 +43,17 @@ def main():
     q_vib = Queue()
     q_therm = Queue()
     q_cmd = Queue()
+    q_unity = Queue()
     stop_evt = multiprocessing.Event()
 
     p_worker = Process(target=Worker, args=(stop_evt, q_cmd,), daemon= True) 
-    p_commander = Process(target=Commander, args=(stop_evt, q_pres, q_vib, q_therm, q_cmd,), daemon= True) 
+    p_commander = Process(target=Commander, args=(stop_evt, q_pres, q_vib, q_therm, q_cmd, q_unity,), daemon= True) 
     p_vib = Process(target=dsp_vib, args=(stop_evt, q_audio_vib, q_vib,), daemon=True)
     p_therm = Process(target=dsp_therm, args=(stop_evt, q_audio_therm, q_therm,), daemon=True)
     p_audiocapture = Process(target=AudioCapture, args=(stop_evt, q_audio_playback, q_audio_vib, q_audio_therm), daemon=True)
     p_audioplayback = Process(target=AudioPlayback, args=(stop_evt, q_audio_playback), daemon=True)
     p_serial = Process(target=read_from_serial, args=(stop_evt, q_pres, port, baud,), daemon=True)
+    p_socket = Process(target=SocketToUnity, args=(stop_evt, q_unity,), daemon=True)
     
     
 
@@ -61,6 +64,7 @@ def main():
     p_audiocapture.start()
     p_audioplayback.start()
     p_serial.start()
+    p_socket.start()
 
     # workaround: because there's 5 mysterious data in q_pres, we clean them all first
     time.sleep(3)
@@ -72,6 +76,8 @@ def main():
         q_therm.get_nowait()
     while not q_cmd.empty():
         q_cmd.get_nowait()
+    while not q_unity.empty():
+        q_unity.get_nowait()
 
     print("Press 'q' then Enter to quit.")
     try:
@@ -91,6 +97,7 @@ def main():
         p_audioplayback.join()
         p_vib.join()
         p_therm.join()
+        p_socket.join()
         print("Stopped cleanly.")
 
 if __name__ == "__main__":
