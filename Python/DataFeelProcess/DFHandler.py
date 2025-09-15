@@ -39,8 +39,12 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
     startCool = False
     last_trigger = time.perf_counter()
     lastCool_trigger = time.perf_counter()
+    lastP = [0,0,0,0,0,0,0,0]
+    pLastIsHit = False 
+    p1LastIsHit = False 
+    lastP1 = [0,0,0,0,0,0,0,0]
     while not stop_evt.is_set():
-        print(q_pres.qsize(), q_vib.qsize(), q_therm.qsize())
+        # print(q_pres.qsize(), q_vib.qsize(), q_therm.qsize())
         t = q_pres.get()
         temp, pres1, pres2 = t.split(";")
         p = pres1.split(",")
@@ -114,12 +118,23 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         t2 = token(superDotID = 0, vibFrequency=0, vibIntensity=0, heatup=False, ledList=[[0,0,0]]*8)
         t3 = token(superDotID = 1, vibFrequency=0, vibIntensity=0, heatup=False, ledList=[[0,0,0]]*8)
 
+        numsT2 = 0
+
         for i, val in enumerate(p):
-            if int(val)>60:
+            if float(val)>25:
                 # led[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
                 # led[i] = [int(val), int(val), int(val)]
                 # map int(val) from 0-1023 to 0-255
                 # led[i] = [int(val) // 4] * 3
+                numsT2 += 1
+                if((float(val) - float(lastP[i])) > 200) and numsT2 > 1 :
+                    pLastIsHit = True
+                    print("Hitting")
+                    t2.vibIntensity = 1
+                    t2.vibFrequency = 100
+                    t2.heatup = True
+                    t2.ledList = [[255, 0, 0]]*8
+                    break
 
                 if t2.vibIntensity is not None:
                     t2.vibFrequency = 10
@@ -131,13 +146,35 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 t2.ledList[i] = [int(val) // 4] * 3
 
                 # t2.ledList[i] = [255, 0, 0]
+        else: 
+            if numsT2 > 4 and not pLastIsHit:
+                print(">4")
+                t2.vibIntensity = .2
+                t2.vibFrequency = 100
+                t2.heatup = True
+                t2.ledList = [[0, 255, 0]]*8
+            pLastIsHit = False
+            
 
+        lastP = p 
+
+
+        numsT3 = 0
         for i, val in enumerate(p1):
             if int(val)>60:
                 # led[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
                 # led[i] = [int(val), int(val), int(val)]
                 # map int(val) from 0-1023 to 0-255
+                numsT3 += 1
 
+                if((float(val) - float(lastP1[i])) > 200) and numsT3 > 1 :
+                    p1LastIsHit = True
+                    print("Hitting")
+                    t3.vibIntensity = 1
+                    t3.vibFrequency = 100
+                    t3.heatup = True
+                    t3.ledList = [[255, 0, 0]]*8
+                    break
                 if t3.vibIntensity is not None:
                     t3.vibFrequency = 10
                     t3.vibIntensity= max(t3.vibIntensity, int(val) / 1023.0)
@@ -147,8 +184,16 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                     t3.ledList = [[0,0,0]] * 8
                 t3.ledList[i] = [int(val) // 4] * 3
                 
+        else: 
+            if numsT3 > 4 and not p1LastIsHit:
+                print(">4")
+                t3.vibIntensity = .2
+                t3.vibFrequency = 100
+                t3.heatup = True
+                t3.ledList = [[0, 255, 0]]*8
+            p1LastIsHit = False
                 # t3.ledList[i] = [255, 0, 0]
-
+            lastP1 = p1
 
         # print(vib, therm)
         '''HeadPhone'''
@@ -158,7 +203,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         # print(t0)
         # print(t0)
         try:
-            print(q_cmd.qsize())
+            # print(q_cmd.qsize())
             q_cmd.put_nowait(("useToken", (t0, )))
             q_cmd.put_nowait(("useToken", (t1, )))
             q_cmd.put_nowait(("useToken", (t2, )))
