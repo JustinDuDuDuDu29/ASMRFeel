@@ -3,6 +3,7 @@ from multiprocessing import  Process, Queue
 from DataFeelCenter import DataFeelCenter, token
 import queue as pyqueue
 import time
+from Config import Config
 
 def Worker(stop_evt:Event, q_cmd: Queue):
     dfc = DataFeelCenter(numOfDots=4)  
@@ -39,8 +40,9 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
     startCool = False
     last_trigger = time.perf_counter()
     lastCool_trigger = time.perf_counter()
+    redValue = 0
     while not stop_evt.is_set():
-        print(q_pres.qsize(), q_vib.qsize(), q_therm.qsize())
+        # print(q_pres.qsize(), q_vib.qsize(), q_therm.qsize())
         t = q_pres.get()
         temp, pres1, pres2 = t.split(";")
         p = pres1.split(",")
@@ -110,7 +112,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
 
                 if t2.vibIntensity is not None:
                     t2.vibFrequency = 10
-                    t2.vibIntensity= max(t2.vibIntensity, int(val) / 1023.0)
+                    t2.vibIntensity= max(t2.vibIntensity, int(val) / 512.0)
                 else: 
                     t2.vibFrequency = 10
                 if t2.ledList is None:
@@ -127,7 +129,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
 
                 if t3.vibIntensity is not None:
                     t3.vibFrequency = 10
-                    t3.vibIntensity= max(t3.vibIntensity, int(val) / 1023.0)
+                    t3.vibIntensity= max(t3.vibIntensity, int(val) / 512.0)
                 else: 
                     t2.vibFrequency = 10
                 if t3.ledList is None:
@@ -140,9 +142,29 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         # print(vib, therm)
         '''HeadPhone'''
 
-        t0 = token(superDotID = 2, vibFrequency=vibFreq, vibIntensity=vib, heatup=heatup, ledList=[[255,0,0]]*8)
-        t1 = token(superDotID = 3, vibFrequency=vibFreq1, vibIntensity=vib, heatup=heatup, ledList=None)
-        # print(t0)
+        t0 = token(superDotID = 2, vibFrequency=vibFreq, vibIntensity=vib, heatup=heatup, ledList=[[0,0,0]]*8)
+        t1 = token(superDotID = 3, vibFrequency=vibFreq1, vibIntensity=vib, heatup=heatup, ledList=[[0,0,0]]*8)
+
+        if heatup:
+            redValue += Config.AUDIO_CHUNK_MS/1000.0
+            if redValue >= 1.0: redValue = 1.0
+        else:
+            redValue -= Config.AUDIO_CHUNK_MS/1500.0
+            if redValue <= 0.0: redValue = 0.0
+
+        if t0.ledList is None:
+            t0.ledList = [[0,0,0]] * 8
+
+        for i in range(8):
+            t0.ledList[i] = [vib*255, (1-redValue)*vib*255, (1-redValue)*vib*255]
+
+        if t1.ledList is None:
+            t1.ledList = [[0,0,0]] * 8
+        
+        for i in range(8):
+            t1.ledList[i] = [vib*255, (1-redValue)*vib*255, (1-redValue)*vib*255]
+
+        # print(t2.ledList)
         # print(t0)
         try:
             print(q_cmd.qsize())
@@ -150,10 +172,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
             q_cmd.put_nowait(("useToken", (t1, )))
             q_cmd.put_nowait(("useToken", (t2, )))
             q_cmd.put_nowait(("useToken", (t3, )))
-            q_unity.put_nowait(("useToken", (t0, )))
-            q_unity.put_nowait(("useToken", (t1, )))
-            q_unity.put_nowait(("useToken", (t2, )))
-            q_unity.put_nowait(("useToken", (t3, )))
+            q_unity.put_nowait((t0, t1, t2, t3))
             # print(time.perf_counter()-last)
 
         except pyqueue.Full:
