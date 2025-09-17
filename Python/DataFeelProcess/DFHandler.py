@@ -40,6 +40,10 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
     startCool = False
     last_trigger = time.perf_counter()
     lastCool_trigger = time.perf_counter()
+    lastP = [0,0,0,0,0,0,0,0]
+    pLastIsHit = False 
+    p1LastIsHit = False 
+    lastP1 = [0,0,0,0,0,0,0,0]
     redValue = 0
     dredValue = 0
     lastled1 = [[0,0,0]]*8
@@ -56,48 +60,61 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         therm = q_therm.get()
 
         # ------Thermal Feedback------------------
-        tone_smooth = therm
+        toneLeft = therm[0]
+        toneRight = therm[1]
 
         TONE_THRESHOLD = 0.24
         DURATION_THRESHOLD = 0.5
-        vibFreq = 0
-        vibFreq1 = 0
+        vibFreqLeft = 0
+        vibFreqRight = 0
 
         # if vib < 0.3:
         #     vib = 0
 
-        if vib > 0:
-            vibFreq = 10
-            vibFreq1 = 10
-
-        thermVal = None
-        heatup = False
-        # thermDiff = None
+        if vib[0] > 0:
+            vibFreqLeft = 100
+        if vib[1] > 0:
+            vibFreqRight = 100
 
 
-        if tone_smooth >= TONE_THRESHOLD:
-            # print("PreHeating...")
-            # print("PreHeating...")
+        heatUpLeft = False
+        heatUpRight = False
+
+        if toneLeft >= TONE_THRESHOLD:
             if start == False:
-                # print("Heating Count")
-                # print("Heating Count")
                 last_trigger = time.perf_counter()
                 start = True
             elif time.perf_counter() - last_trigger >= DURATION_THRESHOLD:
-                print("Heating")
-                heatup = True
-        elif tone_smooth < TONE_THRESHOLD:
-            # print("PreCooling...")
-            # print("PreCooling...")
+                print("Heating Left")
+                heatUpLeft = True
+        elif toneLeft < TONE_THRESHOLD:
             if startCool == False:
                 lastCool_trigger = time.perf_counter()
                 startCool = True
             elif time.perf_counter() - lastCool_trigger >= DURATION_THRESHOLD*3:
                 start = False
                 startCool = False
-                print("Cooling")
-                heatup = False
+                print("Cooling Left")
+                heatUpLeft = False
 
+
+
+        if toneRight >= TONE_THRESHOLD:
+            if start == False:
+                last_trigger = time.perf_counter()
+                start = True
+            elif time.perf_counter() - last_trigger >= DURATION_THRESHOLD:
+                print("Heating Right")
+                heatUpRight = True
+        elif toneRight < TONE_THRESHOLD:
+            if startCool == False:
+                lastCool_trigger = time.perf_counter()
+                startCool = True
+            elif time.perf_counter() - lastCool_trigger >= DURATION_THRESHOLD*3:
+                start = False
+                startCool = False
+                print("Cooling Right")
+                heatUpRight = False
 
         # print(q_pres.empty(), q_vib.empty(), q_therm.empty())
         # print(q_pres.qsize(), q_vib.qsize(), q_therm.qsize())
@@ -108,12 +125,23 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         t2 = token(superDotID = 0, vibFrequency=0, vibIntensity=0, heatup=False, ledList=[[0,0,0]]*8)
         t3 = token(superDotID = 1, vibFrequency=0, vibIntensity=0, heatup=False, ledList=[[0,0,0]]*8)
 
+        numsT2 = 0
+
         for i, val in enumerate(p):
-            if int(val)>60:
+            if float(val)>25:
                 # led[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
                 # led[i] = [int(val), int(val), int(val)]
                 # map int(val) from 0-1023 to 0-255
                 # led[i] = [int(val) // 4] * 3
+                numsT2 += 1
+                if((float(val) - float(lastP[i])) > 200) and numsT2 > 1 :
+                    pLastIsHit = True
+                    print("Hitting")
+                    t2.vibIntensity = 1
+                    t2.vibFrequency = 100
+                    t2.heatup = True
+                    t2.ledList = [[255, 0, 0]]*8
+                    break
 
                 if t2.vibIntensity is not None:
                     t2.vibFrequency = 10
@@ -125,13 +153,35 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 t2.ledList[i] = [int(val) // 4] * 3
 
                 # t2.ledList[i] = [255, 0, 0]
+        else: 
+            if numsT2 > 4 and not pLastIsHit:
+                print(">4")
+                t2.vibIntensity = .2
+                t2.vibFrequency = 100
+                t2.heatup = True
+                t2.ledList = [[0, 255, 0]]*8
+            pLastIsHit = False
+            
 
+        lastP = p 
+
+
+        numsT3 = 0
         for i, val in enumerate(p1):
             if int(val)>60:
                 # led[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
                 # led[i] = [int(val), int(val), int(val)]
                 # map int(val) from 0-1023 to 0-255
+                numsT3 += 1
 
+                if((float(val) - float(lastP1[i])) > 200) and numsT3 > 1 :
+                    p1LastIsHit = True
+                    print("Hitting")
+                    t3.vibIntensity = 1
+                    t3.vibFrequency = 100
+                    t3.heatup = True
+                    t3.ledList = [[255, 0, 0]]*8
+                    break
                 if t3.vibIntensity is not None:
                     t3.vibFrequency = 10
                     t3.vibIntensity= max(t3.vibIntensity, int(val) / 512.0)
@@ -141,15 +191,24 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                     t3.ledList = [[0,0,0]] * 8
                 t3.ledList[i] = [int(val) // 4] * 3
                 
+        else: 
+            if numsT3 > 4 and not p1LastIsHit:
+                print(">4")
+                t3.vibIntensity = .2
+                t3.vibFrequency = 100
+                t3.heatup = True
+                t3.ledList = [[0, 255, 0]]*8
+            p1LastIsHit = False
                 # t3.ledList[i] = [255, 0, 0]
-
+            lastP1 = p1
 
         # print(vib, therm)
         '''HeadPhone'''
 
-        t0 = token(superDotID = 2, vibFrequency=vibFreq, vibIntensity=vib, heatup=heatup, ledList=[[0,0,0]]*8)
-        t1 = token(superDotID = 3, vibFrequency=vibFreq1, vibIntensity=vib, heatup=heatup, ledList=[[0,0,0]]*8)
-
+        t0 = token(superDotID = 2, vibFrequency=vibFreqLeft, vibIntensity=vib[0], heatup=heatUpLeft, ledList=[[0,0,0]]*8)
+        t1 = token(superDotID = 3, vibFrequency=vibFreqRight, vibIntensity=vib[1], heatup=heatUpRight, ledList=[[0,0,0]]*8)
+        # print(t0)
+        # print(t0)
         try:
             if heatup:
                 redValue += Config.AUDIO_CHUNK_MS/2000.0

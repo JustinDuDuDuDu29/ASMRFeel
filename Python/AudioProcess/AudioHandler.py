@@ -21,11 +21,18 @@ def AudioCapture(stop_evt: Event, q_audio_playback: Queue, q_audio_vib: Queue, q
     # print all device
     for i in range(pa.get_device_count()):
         info = pa.get_device_info_by_index(i)
-        print(f"Device {i}: {info['name']}")
+        print(f"{i}: {info['name']} | "
+            f"host API: {pa.get_host_api_info_by_index(int(info['hostApi']))['name']} | "
+            f"maxInputChannels: {info['maxInputChannels']}")
     framesize = int(Config.SAMPLERATE * chunk_ms / 1000)
 
+
+    if Config.MIMIC_STEREO:
+        channel = 1
+    else:
+        channel = 2
     stream = pa.open(format=pyaudio.paFloat32,
-                     channels=1,
+                     channels=channel,
                      rate=sr,
                      input=True,
                      input_device_index=Config.INPUT_DEVICE_INDEX,
@@ -37,6 +44,8 @@ def AudioCapture(stop_evt: Event, q_audio_playback: Queue, q_audio_vib: Queue, q
     while not stop_evt.is_set():
         data = stream.read(framesize, exception_on_overflow=False)
         arr = np.frombuffer(data, dtype=np.float32)
+        if Config.MIMIC_STEREO:
+            arr = np.stack([arr, arr], axis=0)
         try:
             q_audio_playback.put_nowait(arr)
         except pyqueue.Full:
@@ -44,7 +53,7 @@ def AudioCapture(stop_evt: Event, q_audio_playback: Queue, q_audio_vib: Queue, q
 
         buffer.append(arr)
 
-        if (time.time() - start_time) > vibra_delay:  
+        if (time.time() - start_time) > vibra_delay:
             try:
                 q_audio_vib.put_nowait(buffer.pop(0))
             except pyqueue.Full:
@@ -68,7 +77,7 @@ def AudioPlayback(stop_evt: Event, q_audio_playback: Queue, playback_delay=Confi
     """Play audio from q_audio with a delay (default 300ms)."""
     pa = pyaudio.PyAudio()
     stream = pa.open(format=pyaudio.paFloat32,
-                     channels=1,
+                     channels=2,
                      rate=sr,
                      output=True,
                      output_device_index=Config.OUTPUT_DEVICE_INDEX)
@@ -85,7 +94,9 @@ def AudioPlayback(stop_evt: Event, q_audio_playback: Queue, playback_delay=Confi
 
         # Wait until playback_delay has passed
         if buffer and (time.time() - start_time) > playback_delay:
-            stream.write(buffer.pop(0).tobytes())
+            # play stereo audio Transpose stereo data from (2, framesize) to (framesize, 2) 
+            data = buffer.pop(0).T.tobytes()
+            stream.write(data)
 
     stream.stop_stream()
     stream.close()

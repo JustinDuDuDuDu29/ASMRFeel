@@ -9,6 +9,7 @@ from Plot_Window.RollingPlot import RollingPlot
 
 import sys
 import os
+import time
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -19,11 +20,18 @@ def dsp_vib(stop_evt: Event, q_audio_vib: Queue, q_vib: Queue):
     while not stop_evt.is_set():
         try:
             arr = q_audio_vib.get(timeout=0.1)
-            rms = float(np.sqrt(np.mean(arr**2)))
-            vib_level = rms * Config.VIB_OUT_SCALE
+            left = arr[0] if arr.ndim > 1 else arr
+            right = arr[1] if arr.ndim > 1 else arr
+
+
+            
+            leftRms = float(np.sqrt(np.mean(left**2)))
+            rightRms = float(np.sqrt(np.mean(right**2)))
+            leftVib = leftRms * Config.VIB_OUT_SCALE
+            rightVib = rightRms * Config.VIB_OUT_SCALE
             try:
                 # print(f"vib_level: {vib_level}")
-                q_vib.put_nowait(vib_level)
+                q_vib.put_nowait((leftVib, rightVib))
             except pyqueue.Full:
                 print("q_vib full!!!")
         except pyqueue.Empty:
@@ -79,7 +87,8 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
     # EMA coefficient derived from continuous-time RC equivalent
     ema_alpha = 1.0 if smooth_strength <= 0 else (1.0 - np.exp(-hop_s / smooth_strength))
 
-    tone_smooth = 0.0
+    left_tone_smooth = 0.0
+    right_tone_smooth = 0.0
 
     # plt.ion()
     # fig, ax3 = plt.subplots(1, 1, figsize=(10, 6))
@@ -89,35 +98,54 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
 
 
     while not stop_evt.is_set():
+        # st = time.time()
         try:
             arr = q_audio_therm.get(timeout=0.1)
+            left = arr[0] if arr.ndim > 1 else arr
+            right = arr[1] if arr.ndim > 1 else arr
+
         except pyqueue.Empty:
             # no new audio; just loop
             continue
-
         # quick gate on very low energy
-        rms = float(np.sqrt(np.mean(arr ** 2)))
-        if rms < rms_gate:
-            tone_mix = 0.0
+        leftRms = float(np.sqrt(np.mean(left**2)))
+        rightRms = float(np.sqrt(np.mean(right**2)))
+        if leftRms < rms_gate:
+            left_tone_mix = 0.0
         else:
             # choose nfft >= len(arr), power of two, min 512
-            nfft = max(512, 1 << (len(arr) - 1).bit_length())
-            _, cn, sfm, hfr, harm = tone_features(arr, Config.SAMPLERATE, nfft=nfft)
+            nfft = max(512, 1 << (len(left) - 1).bit_length())
+            _, cn, sfm, hfr, harm = tone_features(left, Config.SAMPLERATE, nfft=nfft)
 
             # mix: brighter / noisier / high-freq -> hotter; harmonic (voiced) -> cooler
             # from your prototype: 0.45*cn + 0.25*sfm + 0.20*hfr + 0.10*(1 - harm)
-            tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.10 * (1.0 - harm)
-            tone_mix = float(np.clip(tone_mix, 0.0, 1.0))
+            left_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.10 * (1.0 - harm)
+            left_tone_mix = float(np.clip(left_tone_mix, 0.0, 1.0))
 
         # EMA smoothing
-        tone_smooth = (1.0 - ema_alpha) * tone_smooth + ema_alpha * tone_mix
+        left_tone_smooth = (1.0 - ema_alpha) * left_tone_smooth + ema_alpha * left_tone_mix
         # tone_plot.update(tone_mix, tone_smooth)
-        therm = tone_smooth * Config.THERM_OUT_SCALE
+        left_therm = left_tone_smooth * Config.THERM_OUT_SCALE
+
+
+        # right channel
+        if rightRms < rms_gate:
+            right_tone_mix = 0.0
+        else:
+            nfft = max(512, 1 << (len(right) - 1).bit_length())
+            _, cn, sfm, hfr, harm = tone_features(right, Config.SAMPLERATE, nfft=nfft)
+            right_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.10 * (1.0 - harm)
+            right_tone_mix = float(np.clip(right_tone_mix, 0.0, 1.0))
+        right_tone_smooth = (1.0 - ema_alpha) * right_tone_smooth + ema_alpha * right_tone_mix
+        right_therm = right_tone_smooth * Config.THERM_OUT_SCALE
+
+
         try:
-            q_therm.put_nowait(therm)
+            q_therm.put_nowait((left_therm, right_therm))
         except pyqueue.Full:
             # if consumer is lagging, drop (we only want freshest)
             print("q_therm full!!!")
             pass
+        # print(f"dsp_therm loop time: {time.time()-st:.3f}s")
         # plt.pause(0.01)
 
