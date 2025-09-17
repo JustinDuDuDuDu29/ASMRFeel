@@ -251,7 +251,8 @@ class Dot:
             lsw, msw = self.dev.read_registers(registeraddress = self.SKIN_TEMP, number_of_registers=2)
             return _from_IEEE754((msw<< 16) + lsw)
 
-        def set_all(self, ledLists: List[List[int]], therIntensity: float, vibFrequency: float, vibIntensity:float) -> float :
+        def set_all(self, isHead:bool, ledLists: List[List[int]], therIntensity: float, vibFrequency: float, vibIntensity:float) -> float :
+            
             vals = []
             for r, g, b in ledLists:
                 val = (b << 16) | (r << 8) | g 
@@ -302,7 +303,11 @@ class Dot:
             
             # self.dev.read_float(self.SINK_TEMP, 3, 2, modbus.BYTEORDER_LITTLE_SWAP)   
             # st = time()
-            self.dev.write_registers(registeraddress = self.LED_INDIVIDUAL_MANUAL_0, values=vals)
+            if isHead:
+                vals = [int(LedMode.GLOBAL_MANUAL)]+vals[0:2]+vals
+                self.dev.write_registers(registeraddress = self.LED_MODE, values=vals)
+            else:
+                self.dev.write_registers(registeraddress = self.LED_INDIVIDUAL_MANUAL_0, values=vals)
             # st2 = time()
             # if re:
             #     print(f"write time: {st2 - st}")

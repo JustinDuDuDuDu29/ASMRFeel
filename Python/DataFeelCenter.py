@@ -42,7 +42,7 @@ class DataFeelCenter():
         self.superDotArr = self.discover_devices_Super(numOfDots)
 
 
-    def useToken(self, token:token):
+    def useToken(self, token:token, isHead:bool = False):
         if token.superDotID is None or (token.vibFrequency is None and token.vibIntensity is None and token.therIntensity is None and token.ledList is None):
             return
         targetDot = self.superDotArr[token.superDotID]
@@ -109,7 +109,7 @@ class DataFeelCenter():
         targetDot.vibIntensity = token.vibIntensity
         targetDot.ledList = token.ledList
 
-        targetDot.therCurrent = targetDot.registers.set_all(targetDot.ledList, therIntensity=token.therIntensity, vibFrequency=token.vibFrequency, vibIntensity=token.vibIntensity)
+        targetDot.therCurrent = targetDot.registers.set_all(isHead, targetDot.ledList, therIntensity=token.therIntensity, vibFrequency=token.vibFrequency, vibIntensity=token.vibIntensity)
         # if token.ledList is not None:
         #     self.led_Arr_no_timing(token.superDotID, token.ledList) 
         # if token.therIntensity:
