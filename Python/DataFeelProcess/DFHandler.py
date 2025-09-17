@@ -41,6 +41,11 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
     last_trigger = time.perf_counter()
     lastCool_trigger = time.perf_counter()
     redValue = 0
+    dredValue = 0
+    lastled1 = [[0,0,0]]*8
+    lastled2 = [[0,0,0]]*8
+    buffer = []
+    start_time = time.time()
     while not stop_evt.is_set():
         # print(q_pres.qsize(), q_vib.qsize(), q_therm.qsize())
         t = q_pres.get()
@@ -145,34 +150,56 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         t0 = token(superDotID = 2, vibFrequency=vibFreq, vibIntensity=vib, heatup=heatup, ledList=[[0,0,0]]*8)
         t1 = token(superDotID = 3, vibFrequency=vibFreq1, vibIntensity=vib, heatup=heatup, ledList=[[0,0,0]]*8)
 
-        if heatup:
-            redValue += Config.AUDIO_CHUNK_MS/1000.0
-            if redValue >= 1.0: redValue = 1.0
-        else:
-            redValue -= Config.AUDIO_CHUNK_MS/1500.0
-            if redValue <= 0.0: redValue = 0.0
+        try:
+            if heatup:
+                redValue += Config.AUDIO_CHUNK_MS/2000.0
+                if redValue >= 1.0: redValue = 1.0
+            else:
+                redValue -= Config.AUDIO_CHUNK_MS/2000.0
+                if redValue <= 0.0: redValue = 0.0
+            buffer.append(redValue)
+            print(redValue)
+        except pyqueue.Empty:
+            pass
+
+        if buffer and (time.time() - start_time) > Config.AUDIO_PLAYBACK_DELAY_S:
+            dredValue = buffer.pop(0)
+        
+        
 
         if t0.ledList is None:
             t0.ledList = [[0,0,0]] * 8
 
-        for i in range(8):
-            t0.ledList[i] = [vib*255, (1-redValue)*vib*255, (1-redValue)*vib*255]
+        if vib > 0.2:
+            for i in range(8):
+                t0.ledList[i] = [int(vib*255), int((1-dredValue)*vib*255), int((1-dredValue)*vib*255)]
+                # if i == 0: print(t0.ledList[0])
+        else:
+            t0.ledList = lastled1
+        
+        lastled1 = t0.ledList
 
         if t1.ledList is None:
             t1.ledList = [[0,0,0]] * 8
         
-        for i in range(8):
-            t1.ledList[i] = [vib*255, (1-redValue)*vib*255, (1-redValue)*vib*255]
+        if vib > 0.2:
+            for i in range(8):
+                t1.ledList[i] = [int(vib*255), int((1-dredValue)*vib*255), int((1-dredValue)*vib*255)]
+        else:
+            t1.ledList = lastled2
+
+        lastled2 = t1.ledList
 
         # print(t2.ledList)
-        # print(t0)
+
         try:
-            print(q_cmd.qsize())
+            # print(q_cmd.qsize())
             q_cmd.put_nowait(("useToken", (t0, )))
             q_cmd.put_nowait(("useToken", (t1, )))
             q_cmd.put_nowait(("useToken", (t2, )))
             q_cmd.put_nowait(("useToken", (t3, )))
             q_unity.put_nowait((t0, t1, t2, t3))
+            
             # print(time.perf_counter()-last)
 
         except pyqueue.Full:

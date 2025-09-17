@@ -41,7 +41,7 @@ def _send_framed(conn: socket.socket, data: bytes):
     header = n.to_bytes(4, byteorder="big", signed=False)
     conn.sendall(header + data)
 
-def SocketToUnity(stop_evt: Event, unityQueue: Queue):
+def SocketToUnity(stop_evt: Event, unityQueue: Queue, port: int):
     """
     長度前置的 TCP 伺服器。
     從 unityQueue 取資料，封包後送到 Unity。
@@ -50,7 +50,7 @@ def SocketToUnity(stop_evt: Event, unityQueue: Queue):
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                s.bind((socketConfig.HOST, socketConfig.PORT))
+                s.bind((socketConfig.HOST, port))
                 s.listen(socketConfig.LISTEN)
                 s.settimeout(socketConfig.ACCEPT_TIMEOUT)
 

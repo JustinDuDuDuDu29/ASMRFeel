@@ -87,6 +87,8 @@ class DataFeelCenter():
         if token.vibIntensity is None:
             token.vibIntensity = targetDot.vibIntensity
         # token.vibIntensity = min(abs(token.vibIntensity), 1)
+        if token.vibIntensity <= 0.5:
+            token.vibIntensity = 0
 
         if token.ledList is None:
             token.ledList = targetDot.ledList

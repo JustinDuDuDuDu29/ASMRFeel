@@ -44,6 +44,7 @@ def main():
     q_therm = Queue()
     q_cmd = Queue()
     q_unity = Queue()
+    # q_wav = Queue()
     stop_evt = multiprocessing.Event()
 
     p_worker = Process(target=Worker, args=(stop_evt, q_cmd,), daemon= True) 
@@ -53,7 +54,8 @@ def main():
     p_audiocapture = Process(target=AudioCapture, args=(stop_evt, q_audio_playback, q_audio_vib, q_audio_therm), daemon=True)
     p_audioplayback = Process(target=AudioPlayback, args=(stop_evt, q_audio_playback), daemon=True)
     p_serial = Process(target=read_from_serial, args=(stop_evt, q_pres, port, baud,), daemon=True)
-    p_socket = Process(target=SocketToUnity, args=(stop_evt, q_unity,), daemon=True)
+    p_socket = Process(target=SocketToUnity, args=(stop_evt, q_unity, 1688, ), daemon=True)
+    # p_wsocket = Process(target=SocketToUnity, args=(stop_evt, q_wav, 1689, ), daemon=True)
     
     
 
@@ -65,6 +67,7 @@ def main():
     p_audioplayback.start()
     p_serial.start()
     p_socket.start()
+    # p_wsocket.start()
 
     # workaround: because there's 5 mysterious data in q_pres, we clean them all first
     time.sleep(3)
@@ -78,6 +81,8 @@ def main():
         q_cmd.get_nowait()
     while not q_unity.empty():
         q_unity.get_nowait()
+    # while not q_wav.empty():
+    #     q_wav.get_nowait()
 
     print("Press 'q' then Enter to quit.")
     try:
@@ -98,6 +103,7 @@ def main():
         p_vib.join()
         p_therm.join()
         p_socket.join()
+        # p_wsocket.join()
         print("Stopped cleanly.")
 
 if __name__ == "__main__":
