@@ -21,11 +21,18 @@ def AudioCapture(stop_evt: Event, q_audio_playback: Queue, q_audio_vib: Queue, q
     # print all device
     for i in range(pa.get_device_count()):
         info = pa.get_device_info_by_index(i)
-        print(f"Device {i}: {info['name']}")
+        print(f"{i}: {info['name']} | "
+            f"host API: {pa.get_host_api_info_by_index(int(info['hostApi']))['name']} | "
+            f"maxInputChannels: {info['maxInputChannels']}")
     framesize = int(Config.SAMPLERATE * chunk_ms / 1000)
 
+
+    if Config.MIMIC_STEREO:
+        channel = 1
+    else:
+        channel = 2
     stream = pa.open(format=pyaudio.paFloat32,
-                     channels=1,
+                     channels=channel,
                      rate=sr,
                      input=True,
                      input_device_index=Config.INPUT_DEVICE_INDEX,
@@ -46,7 +53,7 @@ def AudioCapture(stop_evt: Event, q_audio_playback: Queue, q_audio_vib: Queue, q
 
         buffer.append(arr)
 
-        if (time.time() - start_time) > vibra_delay:  
+        if (time.time() - start_time) > vibra_delay:
             try:
                 q_audio_vib.put_nowait(buffer.pop(0))
             except pyqueue.Full:

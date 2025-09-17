@@ -6,6 +6,8 @@ import serial
 import serial.tools.list_ports
 import struct
 from dataclasses import dataclass
+from Config import Config
+
 class SuperDot(Dot):
     def __init__(self, port, id):
         super().__init__(port, id)
@@ -21,7 +23,8 @@ class SuperDot(Dot):
         self.vibFrequency: float = 0
         self.vibIntensity: float = 0
         self.ledList: List[List[int]] = [[0,0,0]] * 8
-        self.heatTimer: float | None =  None
+        self.heatTimer: float = 0
+        self.lastTime = time.time()
     
 
 
@@ -48,22 +51,28 @@ class DataFeelCenter():
         targetDot = self.superDotArr[token.superDotID]
 
         if token.heatup is not None:
-            if targetDot.heatTimer is None:
-                targetDot.heatTimer = time.time()
-
             if token.heatup:
-                if time.time() - targetDot.heatTimer < 3:
+                targetDot.heatTimer = min(Config.HEAT_TIME, targetDot.heatTimer + (time.time() - targetDot.lastTime))
+                if targetDot.heatTimer < Config.HEAT_TIME:
                     print("Heating up...")
                     token.therIntensity = 1.0
                 else:
                     print("Heat controlling...")
                     token.therIntensity = 0.2
             else:
-                targetDot.heatTimer = None
-                token.therIntensity = 0
+                targetDot.heatTimer = max(0, targetDot.heatTimer - (time.time() - targetDot.lastTime))
+                
+                if targetDot.heatTimer > 0:
+                    print("Cooling down...")
+                    token.therIntensity = -1
+                else:
+                    token.therIntensity = 0
+
+            # print("lastTime:", targetDot.lastTime)
+            # print("currentTime:", time.time())
+            print("heatTimer:", targetDot.heatTimer)
         else:
             print("no heatup info!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            targetDot.heatTimer = None 
             token.therIntensity = 0
         
                 
@@ -108,6 +117,8 @@ class DataFeelCenter():
         targetDot.vibFrequency = token.vibFrequency
         targetDot.vibIntensity = token.vibIntensity
         targetDot.ledList = token.ledList
+
+        targetDot.lastTime = time.time()
 
         targetDot.therCurrent = targetDot.registers.set_all(targetDot.ledList, therIntensity=token.therIntensity, vibFrequency=token.vibFrequency, vibIntensity=token.vibIntensity)
         # if token.ledList is not None:

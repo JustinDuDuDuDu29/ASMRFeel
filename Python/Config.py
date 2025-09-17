@@ -1,7 +1,7 @@
 
 class Config:
     INPUT_DEVICE_INDEX = 1
-    OUTPUT_DEVICE_INDEX = 2
+    OUTPUT_DEVICE_INDEX = 6
     SAMPLERATE = 16000
     AUDIO_CHUNK_MS = 70
 
@@ -10,8 +10,8 @@ class Config:
 
     VIB_OUT_SCALE = 20
 
-
+    HEAT_TIME = 3
     THERM_OUT_SCALE = 1
 
     
-    MIMIC_STEREO = True
+    MIMIC_STEREO = False
