@@ -46,9 +46,12 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
     lastP1 = [0,0,0,0,0,0,0,0]
     redValue = 0
     dredValue = 0
+    right_redValue = 0
+    right_dredValue = 0
     lastled1 = [[0,0,0]]*8
     lastled2 = [[0,0,0]]*8
     buffer = []
+    right_buffer = []
     start_time = time.time()
     while not stop_evt.is_set():
         # print(q_pres.qsize(), q_vib.qsize(), q_therm.qsize())
@@ -85,7 +88,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 last_trigger = time.perf_counter()
                 start = True
             elif time.perf_counter() - last_trigger >= DURATION_THRESHOLD:
-                print("Heating Left")
+                # print("Heating Left")
                 heatUpLeft = True
         elif toneLeft < TONE_THRESHOLD:
             if startCool == False:
@@ -94,7 +97,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
             elif time.perf_counter() - lastCool_trigger >= DURATION_THRESHOLD*3:
                 start = False
                 startCool = False
-                print("Cooling Left")
+                # print("Cooling Left")
                 heatUpLeft = False
 
 
@@ -104,7 +107,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 last_trigger = time.perf_counter()
                 start = True
             elif time.perf_counter() - last_trigger >= DURATION_THRESHOLD:
-                print("Heating Right")
+                # print("Heating Right")
                 heatUpRight = True
         elif toneRight < TONE_THRESHOLD:
             if startCool == False:
@@ -113,7 +116,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
             elif time.perf_counter() - lastCool_trigger >= DURATION_THRESHOLD*3:
                 start = False
                 startCool = False
-                print("Cooling Right")
+                # print("Cooling Right")
                 heatUpRight = False
 
         # print(q_pres.empty(), q_vib.empty(), q_therm.empty())
@@ -210,28 +213,41 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         # print(t0)
         # print(t0)
         try:
-            if heatup:
+            if heatUpLeft:
                 redValue += Config.AUDIO_CHUNK_MS/2000.0
                 if redValue >= 1.0: redValue = 1.0
             else:
                 redValue -= Config.AUDIO_CHUNK_MS/2000.0
                 if redValue <= 0.0: redValue = 0.0
             buffer.append(redValue)
-            print(redValue)
         except pyqueue.Empty:
             pass
 
         if buffer and (time.time() - start_time) > Config.AUDIO_PLAYBACK_DELAY_S:
             dredValue = buffer.pop(0)
+
+        try:
+            if heatUpRight:
+                right_redValue += Config.AUDIO_CHUNK_MS/2000.0
+                if right_redValue >= 1.0: right_redValue = 1.0
+            else:
+                right_redValue -= Config.AUDIO_CHUNK_MS/2000.0
+                if right_redValue <= 0.0: right_redValue = 0.0
+            right_buffer.append(right_redValue)
+        except pyqueue.Empty:
+            pass
+
+        if right_buffer and (time.time() - start_time) > Config.AUDIO_PLAYBACK_DELAY_S:
+            right_dredValue = right_buffer.pop(0)
         
         
 
         if t0.ledList is None:
             t0.ledList = [[0,0,0]] * 8
 
-        if vib > 0.2:
+        if vib[0] > 0.2:
             for i in range(8):
-                t0.ledList[i] = [int(vib*255), int((1-dredValue)*vib*255), int((1-dredValue)*vib*255)]
+                t0.ledList[i] = [int(vib[0]*255), int((1-dredValue)*vib[0]*255), int((1-dredValue)*vib[0]*255)]
                 # if i == 0: print(t0.ledList[0])
         else:
             t0.ledList = lastled1
@@ -241,9 +257,9 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         if t1.ledList is None:
             t1.ledList = [[0,0,0]] * 8
         
-        if vib > 0.2:
+        if vib[1] > 0.2:
             for i in range(8):
-                t1.ledList[i] = [int(vib*255), int((1-dredValue)*vib*255), int((1-dredValue)*vib*255)]
+                t1.ledList[i] = [int(vib[1]*255), int((1-right_dredValue)*vib[1]*255), int((1-right_dredValue)*vib[1]*255)]
         else:
             t1.ledList = lastled2
 
@@ -253,8 +269,8 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
 
         try:
             # print(q_cmd.qsize())
-            q_cmd.put_nowait(("useToken", (t0, )))
-            q_cmd.put_nowait(("useToken", (t1, )))
+            q_cmd.put_nowait(("useToken", (t0, True)))
+            q_cmd.put_nowait(("useToken", (t1, True)))
             q_cmd.put_nowait(("useToken", (t2, )))
             q_cmd.put_nowait(("useToken", (t3, )))
             q_unity.put_nowait((t0, t1, t2, t3))
