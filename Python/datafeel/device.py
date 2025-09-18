@@ -304,7 +304,10 @@ class Dot:
             # self.dev.read_float(self.SINK_TEMP, 3, 2, modbus.BYTEORDER_LITTLE_SWAP)   
             # st = time()
             if isHead:
-                vals = [int(LedMode.GLOBAL_MANUAL)]+vals[0:2]+vals
+                lsw = int(int(VibrationMode.MANUAL) % 65535)
+                msw = int(int(VibrationMode.MANUAL) / 65535)
+                vals = [lsw, msw]+vals[0:2]+[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]+vals[16:]
+                # print(vals)
                 self.dev.write_registers(registeraddress = self.LED_MODE, values=vals)
             else:
                 self.dev.write_registers(registeraddress = self.LED_INDIVIDUAL_MANUAL_0, values=vals)

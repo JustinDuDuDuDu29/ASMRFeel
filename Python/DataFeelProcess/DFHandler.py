@@ -66,7 +66,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         toneLeft = therm[0]
         toneRight = therm[1]
 
-        TONE_THRESHOLD = 0.24
+        TONE_THRESHOLD = 0.25
         DURATION_THRESHOLD = 0.5
         vibFreqLeft = 0
         vibFreqRight = 0
@@ -82,6 +82,8 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
 
         heatUpLeft = False
         heatUpRight = False
+        dheatUpLeft = False
+        dheatUpRight = False
 
         if toneLeft >= TONE_THRESHOLD:
             if start == False:
@@ -160,7 +162,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
             if numsT2 > 4 and not pLastIsHit:
                 print(">4")
                 t2.vibIntensity = .2
-                t2.vibFrequency = 100
+                t2.vibFrequency = 98
                 t2.heatup = True
                 t2.ledList = [[0, 255, 0]]*8
             pLastIsHit = False
@@ -198,7 +200,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
             if numsT3 > 4 and not p1LastIsHit:
                 print(">4")
                 t3.vibIntensity = .2
-                t3.vibFrequency = 100
+                t3.vibFrequency = 98
                 t3.heatup = True
                 t3.ledList = [[0, 255, 0]]*8
             p1LastIsHit = False
@@ -219,51 +221,50 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
             else:
                 redValue -= Config.AUDIO_CHUNK_MS/2000.0
                 if redValue <= 0.0: redValue = 0.0
-            buffer.append(redValue)
+            buffer.append((redValue, heatUpLeft))
         except pyqueue.Empty:
             pass
 
         if buffer and (time.time() - start_time) > Config.AUDIO_PLAYBACK_DELAY_S:
-            dredValue = buffer.pop(0)
+            (dredValue, dheatUpLeft) = buffer.pop(0)
 
         try:
             if heatUpRight:
-                right_redValue += Config.AUDIO_CHUNK_MS/2000.0
+                right_redValue += Config.AUDIO_CHUNK_MS/1000.0
                 if right_redValue >= 1.0: right_redValue = 1.0
             else:
-                right_redValue -= Config.AUDIO_CHUNK_MS/2000.0
+                right_redValue -= Config.AUDIO_CHUNK_MS/1000.0
                 if right_redValue <= 0.0: right_redValue = 0.0
-            right_buffer.append(right_redValue)
+            right_buffer.append((right_redValue, heatUpRight))
         except pyqueue.Empty:
             pass
 
         if right_buffer and (time.time() - start_time) > Config.AUDIO_PLAYBACK_DELAY_S:
-            right_dredValue = right_buffer.pop(0)
+            (right_dredValue, dheatUpRight) = right_buffer.pop(0)
         
         
 
         if t0.ledList is None:
             t0.ledList = [[0,0,0]] * 8
 
-        if vib[0] > 0.2:
-            for i in range(8):
-                t0.ledList[i] = [int(vib[0]*255), int((1-dredValue)*vib[0]*255), int((1-dredValue)*vib[0]*255)]
-                # if i == 0: print(t0.ledList[0])
-        else:
-            t0.ledList = lastled1
+        for i in range(8):
+            if dheatUpLeft:
+                    t0.ledList[i] = [int(vib[0]*255), 0, 0]
+            else:
+                t0.ledList[i] = [int((1-dredValue)*vib[0]*255), int((1-dredValue)*vib[0]*255), int((1-dredValue)*vib[0]*255)]
+            # if i == 0: print(t0.ledList[0])
+
         
-        lastled1 = t0.ledList
 
         if t1.ledList is None:
             t1.ledList = [[0,0,0]] * 8
         
-        if vib[1] > 0.2:
-            for i in range(8):
-                t1.ledList[i] = [int(vib[1]*255), int((1-right_dredValue)*vib[1]*255), int((1-right_dredValue)*vib[1]*255)]
-        else:
-            t1.ledList = lastled2
+        for i in range(8):
+            if dheatUpRight:
+                t1.ledList[i] = [int(vib[1]*255), 0, 0]
+            else:
+                t1.ledList[i] = [int((1-right_dredValue)*vib[1]*255), int((1-right_dredValue)*vib[1]*255), int((1-right_dredValue)*vib[1]*255)]
 
-        lastled2 = t1.ledList
 
         # print(t2.ledList)
 
