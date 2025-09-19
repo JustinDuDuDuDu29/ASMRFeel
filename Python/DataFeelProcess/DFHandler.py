@@ -177,7 +177,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 # led[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
                 # led[i] = [int(val), int(val), int(val)]
                 # map int(val) from 0-1023 to 0-255
-                numsT3 += 1
+                if int(val) >= 200: numsT3 += 1
 
                 if((float(val) - float(lastP1[i])) > 200) and numsT3 > 1 :
                     p1LastIsHit = True
