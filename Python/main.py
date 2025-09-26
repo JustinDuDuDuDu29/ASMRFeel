@@ -54,7 +54,7 @@ def main():
     p_audiocapture = Process(target=AudioCapture, args=(stop_evt, q_audio_playback, q_audio_vib, q_audio_therm), daemon=True)
     p_audioplayback = Process(target=AudioPlayback, args=(stop_evt, q_audio_playback), daemon=True)
     p_serial = Process(target=read_from_serial, args=(stop_evt, q_pres, port, baud,), daemon=True)
-    p_socket = Process(target=SocketToUnity, args=(stop_evt, q_unity, 1688, ), daemon=True)
+    # p_socket = Process(target=SocketToUnity, args=(stop_evt, q_unity, 1688, ), daemon=True)
     # p_wsocket = Process(target=SocketToUnity, args=(stop_evt, q_wav, 1689, ), daemon=True)
     
     
@@ -66,7 +66,7 @@ def main():
     p_audiocapture.start()
     p_audioplayback.start()
     p_serial.start()
-    p_socket.start()
+    # p_socket.start()
     # p_wsocket.start()
 
     # workaround: because there's 5 mysterious data in q_pres, we clean them all first
@@ -102,7 +102,7 @@ def main():
         p_audioplayback.join()
         p_vib.join()
         p_therm.join()
-        p_socket.join()
+        # p_socket.join()
         # p_wsocket.join()
         print("Stopped cleanly.")
 

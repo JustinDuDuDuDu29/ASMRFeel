@@ -119,7 +119,11 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
 
             # mix: brighter / noisier / high-freq -> hotter; harmonic (voiced) -> cooler
             # from your prototype: 0.45*cn + 0.25*sfm + 0.20*hfr + 0.10*(1 - harm)
-            left_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.10 * (1.0 - harm)
+
+            # left_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.10 * (1.0 - harm)
+
+            left_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.05 * harm
+
             left_tone_mix = float(np.clip(left_tone_mix, 0.0, 1.0))
 
         # EMA smoothing
@@ -134,7 +138,11 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
         else:
             nfft = max(512, 1 << (len(right) - 1).bit_length())
             _, cn, sfm, hfr, harm = tone_features(right, Config.SAMPLERATE, nfft=nfft)
-            right_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.10 * (1.0 - harm)
+
+            # right_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.10 * (1.0 - harm)
+
+            right_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.05 * harm
+
             right_tone_mix = float(np.clip(right_tone_mix, 0.0, 1.0))
         right_tone_smooth = (1.0 - ema_alpha) * right_tone_smooth + ema_alpha * right_tone_mix
         right_therm = right_tone_smooth * Config.THERM_OUT_SCALE

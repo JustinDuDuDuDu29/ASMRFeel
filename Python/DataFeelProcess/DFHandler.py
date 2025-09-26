@@ -4,7 +4,11 @@ from DataFeelCenter import DataFeelCenter, token
 import queue as pyqueue
 import time
 from Config import Config
-
+def swap_elements(lst, *pairs):
+    for pair in pairs:
+        idx1, idx2 = pair
+        lst[idx1], lst[idx2] = lst[idx2], lst[idx1]
+    return lst
 def Worker(stop_evt:Event, q_cmd: Queue):
     dfc = DataFeelCenter(numOfDots=4)  
     
@@ -131,18 +135,22 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         t3 = token(superDotID = 1, vibFrequency=0, vibIntensity=0, heatup=False, ledList=[[0,0,0]]*8)
 
         numsT2 = 0
+        p1 = swap_elements(p1, (7,3), (6,2), (5,1), (4,0),(0,3),(1,2))
+        p = swap_elements(p, (0,3),(1,2))
 
         for i, val in enumerate(p):
-            if float(val)>25:
+            if float(val)>120:
+                print(i)
                 # led[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
                 # led[i] = [int(val), int(val), int(val)]
                 # map int(val) from 0-1023 to 0-255
                 # led[i] = [int(val) // 4] * 3
-                numsT2 += 1
-                if((float(val) - float(lastP[i])) > 200) and numsT2 > 1 :
+                if int(val) >= 110: numsT2 += 1
+
+                if((float(val) - float(lastP[i])) > 130) and numsT2 > 3 :
                     pLastIsHit = True
                     print("Hitting")
-                    t2.vibIntensity = 1
+                    t2.vibIntensity = 1*Config.HVIB_OUT_SCALE
                     t2.vibFrequency = 100
                     t2.heatup = True
                     t2.ledList = [[255, 0, 0]]*8
@@ -150,7 +158,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
 
                 if t2.vibIntensity is not None:
                     t2.vibFrequency = 10
-                    t2.vibIntensity= max(t2.vibIntensity, int(val) / 512.0)
+                    t2.vibIntensity= max(t2.vibIntensity, int(val) / 512.0)*Config.HVIB_OUT_SCALE
                 else: 
                     t2.vibFrequency = 10
                 if t2.ledList is None:
@@ -161,7 +169,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         else: 
             if numsT2 > 4 and not pLastIsHit:
                 print(">4")
-                t2.vibIntensity = .2
+                t2.vibIntensity = .2*Config.HVIB_OUT_SCALE
                 t2.vibFrequency = 98
                 t2.heatup = True
                 t2.ledList = [[0, 255, 0]]*8
@@ -173,23 +181,24 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
 
         numsT3 = 0
         for i, val in enumerate(p1):
-            if int(val)>60:
+            if int(val)>120:
+                print(i)
                 # led[i] = [random.randint(0,255), random.randint(0,255), random.randint(0,255)]
                 # led[i] = [int(val), int(val), int(val)]
                 # map int(val) from 0-1023 to 0-255
-                if int(val) >= 200: numsT3 += 1
+                if int(val) >= 110: numsT3 += 1
 
-                if((float(val) - float(lastP1[i])) > 200) and numsT3 > 1 :
+                if((float(val) - float(lastP1[i])) > 130) and numsT3 > 3 :
                     p1LastIsHit = True
                     print("Hitting")
-                    t3.vibIntensity = 1
+                    t3.vibIntensity = 1*Config.HVIB_OUT_SCALE
                     t3.vibFrequency = 100
                     t3.heatup = True
                     t3.ledList = [[255, 0, 0]]*8
                     break
                 if t3.vibIntensity is not None:
                     t3.vibFrequency = 10
-                    t3.vibIntensity= max(t3.vibIntensity, int(val) / 512.0)
+                    t3.vibIntensity= max(t3.vibIntensity, int(val) / 512.0)*Config.HVIB_OUT_SCALE
                 else: 
                     t2.vibFrequency = 10
                 if t3.ledList is None:
@@ -199,7 +208,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         else: 
             if numsT3 > 4 and not p1LastIsHit:
                 print(">4")
-                t3.vibIntensity = .2
+                t3.vibIntensity = .2*Config.HVIB_OUT_SCALE
                 t3.vibFrequency = 98
                 t3.heatup = True
                 t3.ledList = [[0, 255, 0]]*8
@@ -274,7 +283,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
             q_cmd.put_nowait(("useToken", (t1, True)))
             q_cmd.put_nowait(("useToken", (t2, )))
             q_cmd.put_nowait(("useToken", (t3, )))
-            q_unity.put_nowait((t0, t1, t2, t3))
+            # q_unity.put_nowait((t0, t1, t2, t3))
             
             # print(time.perf_counter()-last)
 
