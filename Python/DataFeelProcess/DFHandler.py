@@ -219,8 +219,8 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         # print(vib, therm)
         '''HeadPhone'''
 
-        t0 = token(superDotID = 2, vibFrequency=vibFreqLeft, vibIntensity=vib[0], heatup=heatUpLeft, ledList=[[0,0,0]]*8)
-        t1 = token(superDotID = 3, vibFrequency=vibFreqRight, vibIntensity=vib[1], heatup=heatUpRight, ledList=[[0,0,0]]*8)
+        t0 = token(superDotID = 3, vibFrequency=vibFreqLeft, vibIntensity=vib[0], heatup=heatUpLeft, ledList=[[0,0,0]]*8)
+        t1 = token(superDotID = 2, vibFrequency=vibFreqRight, vibIntensity=vib[1], heatup=heatUpRight, ledList=[[0,0,0]]*8)
         # print(t0)
         # print(t0)
         try:
