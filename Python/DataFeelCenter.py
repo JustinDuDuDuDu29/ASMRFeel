@@ -58,7 +58,7 @@ class DataFeelCenter():
                     token.therIntensity = 0.7
                 else:
                     # print("Heat controlling...")
-                    token.therIntensity = -0.2
+                    token.therIntensity = 0.2
             else:
                 targetDot.heatTimer = max(0, targetDot.heatTimer - (time.time() - targetDot.lastTime))
                 
