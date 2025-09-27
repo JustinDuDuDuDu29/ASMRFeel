@@ -46,12 +46,13 @@ def main():
     q_unity = Queue()
     # q_wav = Queue()
     stop_evt = multiprocessing.Event()
+    init_evt = multiprocessing.Event()
 
     p_worker = Process(target=Worker, args=(stop_evt, q_cmd,), daemon= True) 
     p_commander = Process(target=Commander, args=(stop_evt, q_pres, q_vib, q_therm, q_cmd, q_unity,), daemon= True) 
-    p_vib = Process(target=dsp_vib, args=(stop_evt, q_audio_vib, q_vib,), daemon=True)
+    p_vib = Process(target=dsp_vib, args=(stop_evt, q_audio_vib, q_vib, init_evt), daemon=True)
     p_therm = Process(target=dsp_therm, args=(stop_evt, q_audio_therm, q_therm,), daemon=True)
-    p_audiocapture = Process(target=AudioCaptureDualMics, args=(stop_evt, q_audio_playback, q_audio_vib, q_audio_therm), daemon=True)
+    p_audiocapture = Process(target=AudioCaptureDualMics, args=(stop_evt, init_evt, q_audio_playback, q_audio_vib, q_audio_therm), daemon=True)
     p_audioplayback = Process(target=AudioPlayback, args=(stop_evt, q_audio_playback), daemon=True)
     p_serial = Process(target=read_from_serial, args=(stop_evt, q_pres, port, baud,), daemon=True)
     # p_socket = Process(target=SocketToUnity, args=(stop_evt, q_unity, 1688, ), daemon=True)
@@ -70,7 +71,7 @@ def main():
     # p_wsocket.start()
 
     # workaround: because there's 5 mysterious data in q_pres, we clean them all first
-    time.sleep(3)
+    time.sleep(4)
     while not q_pres.empty():
         q_pres.get_nowait()
     while not q_vib.empty():

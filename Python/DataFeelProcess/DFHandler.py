@@ -75,8 +75,16 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         vibFreqLeft = 0
         vibFreqRight = 0
 
-        # if vib < 0.3:
-        #     vib = 0
+        '''Vibration Adjustment------------------'''
+        ini_vib = (
+                vib[0],
+                vib[1]
+            )
+        # vib = (
+        #         0 if vib[0] < (5.0*Config.HVIB_OUT_SCALE/20.0) else vib[0],
+        #         0 if vib[1] < (5.0*Config.HVIB_OUT_SCALE/20.0) else vib[1]
+        #     )
+        '''Vibration Adjustment------------------'''
 
         if vib[0] > 0:
             vibFreqLeft = 100
@@ -221,6 +229,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
 
         t0 = token(superDotID = 3, vibFrequency=vibFreqLeft, vibIntensity=vib[0], heatup=heatUpLeft, ledList=[[0,0,0]]*8)
         t1 = token(superDotID = 2, vibFrequency=vibFreqRight, vibIntensity=vib[1], heatup=heatUpRight, ledList=[[0,0,0]]*8)
+        # print(vib[0], vib[1])
         # print(t0)
         # print(t0)
         try:
@@ -257,10 +266,10 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
             t0.ledList = [[0,0,0]] * 8
 
         for i in range(8):
-            if dheatUpLeft:
-                    t0.ledList[i] = [int(vib[0]*255), 0, 0]
+            if dredValue:
+                    t0.ledList[i] = [int(dredValue*255), 0, 0]
             else:
-                t0.ledList[i] = [int((1-dredValue)*vib[0]*255), int((1-dredValue)*vib[0]*255), int((1-dredValue)*vib[0]*255)]
+                t0.ledList[i] = [int(vib[0]*255), int(vib[0]*255), int(vib[0]*255)]
             # if i == 0: print(t0.ledList[0])
 
         
@@ -269,10 +278,10 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
             t1.ledList = [[0,0,0]] * 8
         
         for i in range(8):
-            if dheatUpRight:
-                t1.ledList[i] = [int(vib[1]*255), 0, 0]
+            if right_dredValue:
+                t1.ledList[i] = [int(right_dredValue*255), 0, 0]
             else:
-                t1.ledList[i] = [int((1-right_dredValue)*vib[1]*255), int((1-right_dredValue)*vib[1]*255), int((1-right_dredValue)*vib[1]*255)]
+                t1.ledList[i] = [int(vib[1]*255), int(vib[1]*255), int(vib[1]*255)]
 
 
         # print(t2.ledList)

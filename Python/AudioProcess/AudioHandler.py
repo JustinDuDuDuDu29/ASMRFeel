@@ -104,6 +104,7 @@ def AudioPlayback(stop_evt: Event, q_audio_playback: Queue, playback_delay=Confi
 
 # -------------------- Audio Dual mic capture--------------------
 def AudioCaptureDualMics(stop_evt: Event,
+                        init_evt: Event,
                          q_audio_playback: Queue,
                          q_audio_vib: Queue,
                          q_audio_therm: Queue,
@@ -139,6 +140,8 @@ def AudioCaptureDualMics(stop_evt: Event,
 
     buffer = []
     start_time = time.time()
+
+    init_evt.wait()  # wait until AudioCapture is ready
 
     while not stop_evt.is_set():
         # --- read from both mics ---
