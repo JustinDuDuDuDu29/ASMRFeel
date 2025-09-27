@@ -177,4 +177,3 @@ def AudioCaptureDualMics(stop_evt: Event,
     right_stream.stop_stream()
     right_stream.close()
     pa.terminate()
-
