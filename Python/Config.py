@@ -2,8 +2,8 @@
 class Config:
     INPUT_DEVICE_INDEX = 5
 
-    LEFT_MIC_INDEX = 1
-    RIGHT_MIC_INDEX = 5
+    # LEFT_MIC_INDEX = 1
+    # RIGHT_MIC_INDEX = 5
 
     OUTPUT_DEVICE_INDEX = 10
     SAMPLERATE = 16000
@@ -20,3 +20,4 @@ class Config:
 
     
     MIMIC_STEREO = False
+    RECORD = True

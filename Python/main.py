@@ -4,7 +4,7 @@ from serial.tools import list_ports
 from multiprocessing import  Process, Queue
 
 from Config import Config
-from AudioProcess.AudioHandler import AudioCapture, AudioPlayback, AudioCaptureDualMics
+from AudioProcess.AudioHandler import AudioCapture, AudioPlayback
 from DataFeelProcess.DFHandler import Worker, Commander
 from DataProcess.DataHandler import dsp_therm, dsp_vib
 from SerialProcess.SerialHandler import read_from_serial
@@ -57,7 +57,8 @@ def main():
     p_audioplayback = Process(target=AudioPlayback, args=(stop_evt, q_audio_playback), daemon=True)
     p_serial = Process(target=read_from_serial, args=(stop_evt, q_pres, q_pres_record, port, baud,), daemon=True)
 
-    p_recorder = Process(target=Recorder, args=(stop_evt, q_pres_record,), daemon=True)
+    if Config.RECORD:
+        p_recorder = Process(target=Recorder, args=(stop_evt, q_pres_record,), daemon=True)
     # p_socket = Process(target=SocketToUnity, args=(stop_evt, q_unity, 1688, ), daemon=True)
     # p_wsocket = Process(target=SocketToUnity, args=(stop_evt, q_wav, 1689, ), daemon=True)
     
@@ -70,7 +71,8 @@ def main():
     p_audiocapture.start()
     p_audioplayback.start()
     p_serial.start()
-    p_recorder.start()
+    if Config.RECORD:
+        p_recorder.start()
     # p_socket.start()
     # p_wsocket.start()
 
@@ -109,7 +111,8 @@ def main():
         p_audioplayback.join()
         p_vib.join()
         p_therm.join()
-        p_recorder.join()
+        if Config.RECORD:
+            p_recorder.join()
         # p_socket.join()
         # p_wsocket.join()
         print("Stopped cleanly.")
