@@ -17,6 +17,18 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from Config import Config
 
 def dsp_vib(stop_evt: Event, q_audio_vib: Queue, q_vib: Queue, init_evt: Event):
+    """smooth_step: Smoothly step from prev to target using different attack and release rates."""
+    prev_left_vib  = 0.0
+    prev_right_vib = 0.0
+
+    # 上升（攻擊）與下降（釋放）的平滑係數（0~1，越大變化越快）
+    ATTACK_ALPHA  = 0.35   # 例如 0.25~0.5 之間自行微調
+    RELEASE_ALPHA = 0.10   # 例如 0.05~0.2 之間自行微調
+
+    def smooth_step(prev: float, target: float, attack: float, release: float) -> float:
+        alpha = attack if target > prev else release
+        return prev + alpha * (target - prev)
+    
     """Extract RMS from latest audio and push to q_vib."""
     framesize = int(Config.SAMPLERATE * Config.AUDIO_CHUNK_MS / 1000)
     leftPitch = librosa.yin(np.zeros((1120,)), frame_length= framesize ,fmin=50, fmax=500, sr=Config.SAMPLERATE)
@@ -71,6 +83,17 @@ def dsp_vib(stop_evt: Event, q_audio_vib: Queue, q_vib: Queue, init_evt: Event):
                     rightVib = 0.2 * Config.VIB_OUT_SCALE
                 else:
                     rightVib = 0
+                
+                # 用單極低通平滑（上升快、下降慢）
+                # print(f"now:{leftVib}")
+                leftVib  = smooth_step(prev_left_vib,  rightVib,  ATTACK_ALPHA, RELEASE_ALPHA)
+                rightVib = smooth_step(prev_right_vib, rightVib, ATTACK_ALPHA, RELEASE_ALPHA)
+
+                # print(leftVib)
+
+                # 更新狀態供下個迴圈使用
+                prev_left_vib  = leftVib
+                prev_right_vib = rightVib
 
                 # print("Left Pitch:", leftFreq, "Hz")
                 # print(f"Left Pitch: {leftFreq:.2f} Hz, Right Pitch: {rightFreq:.2f} Hz")

@@ -87,9 +87,9 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         '''Vibration Adjustment------------------'''
 
         if vib[0] > 0:
-            vibFreqLeft = 100
+            vibFreqLeft = 175
         if vib[1] > 0:
-            vibFreqRight = 100
+            vibFreqRight = 175
 
 
         heatUpLeft = False
