@@ -21,5 +21,6 @@ class Config:
 
     
     RECORD_PATH = "./mock.wav"
+    RECORD = False
     PLAY_RECORD = True
     MIMIC_STEREO = False

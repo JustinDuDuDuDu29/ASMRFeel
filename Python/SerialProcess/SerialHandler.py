@@ -10,7 +10,7 @@ import queue as pyqueue
 
 zeroStr = "1;0,0,0,0,0,0,0,0;0,0,0,0,0,0,0,0"
 
-def read_from_serial(stop_evt: Event, q:Queue, port: str, baud: int = 115200):
+def read_from_serial(stop_evt: Event, q:Queue, q_record:Queue, port: str, baud: int = 115200):
     """Line-framed reader. Reconnects on failure."""
 
     while not stop_evt.is_set():
@@ -42,17 +42,21 @@ def read_from_serial(stop_evt: Event, q:Queue, port: str, baud: int = 115200):
                                 
                                 if (time.time() - start_time) > Config.AUDIO_PLAYBACK_DELAY_S:  
                                     q.put_nowait(buffer.pop(0))
+                                    q_record.put_nowait(d)
                                 #
                                 else: 
                                     q.put_nowait(zeroStr)
+                                    q_record.put_nowait(zeroStr)
 
                             except pyqueue.Full:
                                 try:
                                     q.get_nowait()
+                                    q_record.get_nowait()
                                 except pyqueue.Empty:
                                     pass
                                 try:
                                     q.put_nowait(d)
+                                    q_record.put_nowait(d)
                                 except pyqueue.Full:
                                     pass
                     except serial.SerialException as e:
