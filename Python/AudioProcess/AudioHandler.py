@@ -250,6 +250,10 @@ def play_recorded_press(q_pres: Queue, pres_Channel: np.ndarray, lens:int ):
     
     pressIndex = 0
     lastPress = 0
+    start_time = time.time()
+
+    while time.time() - start_time < Config.AUDIO_PLAYBACK_DELAY_S:
+        pass
 
     while pressIndex < lens:
         while 1000 * (time.monotonic() - lastPress) > Config.ARDUINO_CLK: 
@@ -261,11 +265,6 @@ def play_recorded_press(q_pres: Queue, pres_Channel: np.ndarray, lens:int ):
             pdR = press[8:]
             row_a = ",".join(str(int(x)) for x in pdR)   # right half
             row_b = ",".join(str(int(x)) for x in pdL)   # left half
-
-            # print(f"[1;{row_a};{row_b}]")
-
-
-
 
             pressIndex += 1
 

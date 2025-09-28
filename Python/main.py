@@ -54,7 +54,7 @@ def main():
     p_vib = Process(target=dsp_vib, args=(stop_evt, q_audio_vib, q_vib,), daemon=True)
     p_therm = Process(target=dsp_therm, args=(stop_evt, q_audio_therm, q_therm,), daemon=True)
     # p_audiocapture = Process(target=AudioCapture, args=(stop_evt, q_audio_playback, q_audio_vib, q_audio_therm), daemon=True)
-    p_audiocapture = Process(target=AudioCapture, args=(stop_evt, q_audio_playback, q_audio_vib, q_audio_therm, q_pres), daemon=False)
+    p_audiocapture = Process(target=AudioCapture, args=(stop_evt, q_audio_playback, q_audio_vib, q_audio_therm, q_pres, ), daemon=False)
     p_audioplayback = Process(target=AudioPlayback, args=(stop_evt, q_audio_playback), daemon=True)
     p_serial = Process(target=read_from_serial, args=(stop_evt, q_pres, q_pres_record, port, baud,), daemon=True)
 
@@ -71,7 +71,7 @@ def main():
     p_therm.start()
     p_audiocapture.start()
     p_audioplayback.start()
-    p_serial.start()
+    # p_serial.start()
     if Config.RECORD:
         p_recorder.start()
     # p_socket.start()
