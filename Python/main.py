@@ -57,7 +57,7 @@ def main():
     p_audioplayback = Process(target=AudioPlayback, args=(stop_evt, q_audio_playback), daemon=True)
     p_serial = Process(target=read_from_serial, args=(stop_evt, q_pres, q_pres_record, port, baud,), daemon=True)
 
-    p_recorder = Process(target=RecorderAudioOnly, args=(stop_evt, q_pres_record,), daemon=True)
+    p_recorder = Process(target=Recorder, args=(stop_evt, q_pres_record,), daemon=True)
     # p_socket = Process(target=SocketToUnity, args=(stop_evt, q_unity, 1688, ), daemon=True)
     # p_wsocket = Process(target=SocketToUnity, args=(stop_evt, q_wav, 1689, ), daemon=True)
     
