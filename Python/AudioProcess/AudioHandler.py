@@ -14,10 +14,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from Config import Config
 import queue as pyqueue
 
-
 # -------------------- Audio Capture --------------------
 
-def AudioCapture(stop_evt: Event, q_audio_playback: Queue, q_audio_vib: Queue, q_audio_therm: Queue, q_pres:Queue, sr=Config.SAMPLERATE, chunk_ms=Config.AUDIO_CHUNK_MS, vibra_delay=Config.VIBRATION_DELAY_S):
+def AudioCapture(stop_evt: Event, init_evt: Event, q_audio_playback: Queue, q_audio_vib: Queue, q_audio_therm: Queue, q_pres:Queue, sr=Config.SAMPLERATE, chunk_ms=Config.AUDIO_CHUNK_MS, vibra_delay=Config.VIBRATION_DELAY_S):
     """Continuously capture audio in 70 ms frames and put the latest into q_audio."""
     pa = pyaudio.PyAudio()
     # print all device
@@ -37,12 +36,12 @@ def AudioCapture(stop_evt: Event, q_audio_playback: Queue, q_audio_vib: Queue, q
 
 
     if not Config.PLAY_RECORD:
-        if Config.MIMIC_STEREO:
-            channel = 1
-        else:
-            channel = 2
+        # if Config.MIMIC_STEREO:
+        #     channel = 1
+        # else:
+        #     channel = 2
         stream = pa.open(format=pyaudio.paFloat32,
-                         channels=channel,
+                         channels=2,
                          rate=sr,
                          input=True,
                          input_device_index=Config.INPUT_DEVICE_INDEX,
@@ -88,6 +87,8 @@ def AudioCapture(stop_evt: Event, q_audio_playback: Queue, q_audio_vib: Queue, q
 
     index = 0
     lastTime = 0
+    init_evt.wait()  # wait until AudioCapture is ready
+
     while not stop_evt.is_set():
         # print(framesize)
         arr:Optional[np.ndarray] = None
@@ -95,6 +96,10 @@ def AudioCapture(stop_evt: Event, q_audio_playback: Queue, q_audio_vib: Queue, q
             if stream is not None:
                 data = stream.read(framesize, exception_on_overflow=False)
                 arr = np.frombuffer(data, dtype=np.float32)
+                l = arr[0::2]
+                r = arr[1::2]
+                arr = np.stack([l, r], axis=0)
+                # print("streamsahpe", arr.shape)
             else:
                 print("streaming is none! exiting the program")
                 exit()
@@ -112,9 +117,9 @@ def AudioCapture(stop_evt: Event, q_audio_playback: Queue, q_audio_vib: Queue, q
                 lastTime = time.monotonic()
 
         # HERE
-        if Config.MIMIC_STEREO:
-            if arr is not None:
-                arr = np.stack([arr, arr], axis=0)
+        # if Config.MIMIC_STEREO:
+        #     if arr is not None:
+        #         arr = np.stack([arr, arr], axis=0)
         try:
             q_audio_playback.put_nowait(arr)
         except pyqueue.Full:

@@ -118,8 +118,7 @@ def RecorderAudioOnly(stop_evt: Event, q_pres: Queue):
                            frames_per_buffer=framesize)
     
     # Setup WAV file for 2 channels (stereo audio only)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    wav_filename = f"Record/audio_recording_{timestamp}.wav"
+    wav_filename = Config.RECORD_OUT_PATH
     
     # WAV file parameters
     channels = 2  # Left and right audio only

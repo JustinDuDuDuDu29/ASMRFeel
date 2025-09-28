@@ -52,6 +52,7 @@ def dsp_vib(stop_evt: Event, q_audio_vib: Queue, q_vib: Queue, init_evt: Event):
         try:
         
             arr = q_audio_vib.get()
+            # print("vib", arr.shape)
             left = arr[0] if arr.ndim > 1 else arr
             right = arr[1] if arr.ndim > 1 else arr
             # print(f"t1 loop time: {time.time()-t1:.3f}s")
@@ -195,6 +196,7 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
         # st = time.time()
         try:
             arr = q_audio_therm.get(timeout=0.1)
+            # print(arr.shape)
             left = arr[0] if arr.ndim > 1 else arr
             right = arr[1] if arr.ndim > 1 else arr
 
@@ -231,7 +233,7 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
         # lfr_plot.update(lfr)
         # harm_plot.update(harm)
 
-        # tone_plot.update(tone_mix, tone_smooth)
+        # tone_plot.update(left_tone_mix, left_tone_smooth)
 
         # right channel
         if rightRms < rms_gate:
@@ -247,6 +249,9 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
             right_tone_mix = float(np.clip(right_tone_mix, 0.0, 1.0))
         right_tone_smooth = (1.0 - ema_alpha) * right_tone_smooth + ema_alpha * right_tone_mix
         right_therm = right_tone_smooth * Config.THERM_OUT_SCALE
+
+
+        # tone_plot.update(left_tone_smooth, right_tone_smooth)
 
 
         try:

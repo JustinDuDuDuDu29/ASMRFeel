@@ -55,12 +55,13 @@ def main():
     p_vib = Process(target=dsp_vib, args=(stop_evt, q_audio_vib, q_vib, init_evt), daemon=True)
     p_therm = Process(target=dsp_therm, args=(stop_evt, q_audio_therm, q_therm,), daemon=True)
     # p_audiocapture = Process(target=AudioCapture, args=(stop_evt, q_audio_playback, q_audio_vib, q_audio_therm), daemon=True)
-    p_audiocapture = Process(target=AudioCapture, args=(stop_evt, q_audio_playback, q_audio_vib, q_audio_therm, q_pres, ), daemon=False)
+    p_audiocapture = Process(target=AudioCapture, args=(stop_evt, init_evt, q_audio_playback, q_audio_vib, q_audio_therm, q_pres, ), daemon=False)
     p_audioplayback = Process(target=AudioPlayback, args=(stop_evt, q_audio_playback), daemon=True)
-    p_serial = Process(target=read_from_serial, args=(stop_evt, q_pres, q_pres_record, port, baud,), daemon=True)
 
     if Config.RECORD:
         p_recorder = Process(target=Recorder, args=(stop_evt, q_pres_record,), daemon=True)
+    if not Config.PLAY_RECORD:
+        p_serial = Process(target=read_from_serial, args=(stop_evt, q_pres, q_pres_record, port, baud,), daemon=True)
     # p_socket = Process(target=SocketToUnity, args=(stop_evt, q_unity, 1688, ), daemon=True)
     # p_wsocket = Process(target=SocketToUnity, args=(stop_evt, q_wav, 1689, ), daemon=True)
     
@@ -75,6 +76,8 @@ def main():
     # p_serial.start()
     if Config.RECORD:
         p_recorder.start()
+    if not Config.PLAY_RECORD:
+        p_serial.start()
     # p_socket.start()
     # p_wsocket.start()
 
@@ -113,7 +116,7 @@ def main():
         p_audioplayback.join()
         p_vib.join()
         p_therm.join()
-        if Config.RECORD:
+        if not Config.RECORD:
             p_recorder.join()
         # p_socket.join()
         # p_wsocket.join()
