@@ -1,12 +1,14 @@
+import math
 from multiprocessing.synchronize import Event
 from multiprocessing import  Process, Queue
+from typing import Optional
 import pyaudio
 import time
 import numpy as np
 
 import sys
 import os
-
+import wave
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from Config import Config
@@ -15,7 +17,7 @@ import queue as pyqueue
 
 # -------------------- Audio Capture --------------------
 
-def AudioCapture(stop_evt: Event, q_audio_playback: Queue, q_audio_vib: Queue, q_audio_therm: Queue, sr=Config.SAMPLERATE, chunk_ms=Config.AUDIO_CHUNK_MS, vibra_delay=Config.VIBRATION_DELAY_S):
+def AudioCapture(stop_evt: Event, q_audio_playback: Queue, q_audio_vib: Queue, q_audio_therm: Queue, q_pres:Queue, sr=Config.SAMPLERATE, chunk_ms=Config.AUDIO_CHUNK_MS, vibra_delay=Config.VIBRATION_DELAY_S):
     """Continuously capture audio in 70 ms frames and put the latest into q_audio."""
     pa = pyaudio.PyAudio()
     # print all device
@@ -27,31 +29,99 @@ def AudioCapture(stop_evt: Event, q_audio_playback: Queue, q_audio_vib: Queue, q
     framesize = int(Config.SAMPLERATE * chunk_ms / 1000)
 
 
-    if Config.MIMIC_STEREO:
-        channel = 1
+    stream:Optional[pyaudio.Stream] = None
+    raw:bytes = b''
+    dtype = np.float32
+    n_channels = 18
+    all_channels:Optional[np.ndarray] = None
+
+
+    if not Config.PLAY_RECORD:
+        if Config.MIMIC_STEREO:
+            channel = 1
+        else:
+            channel = 2
+        stream = pa.open(format=pyaudio.paFloat32,
+                         channels=channel,
+                         rate=sr,
+                         input=True,
+                         input_device_index=Config.INPUT_DEVICE_INDEX,
+                         frames_per_buffer=framesize)
     else:
-        channel = 2
-    stream = pa.open(format=pyaudio.paFloat32,
-                     channels=channel,
-                     rate=sr,
-                     input=True,
-                     input_device_index=Config.INPUT_DEVICE_INDEX,
-                     frames_per_buffer=framesize)
+        # use record here
+        PATH = Config.RECORD_PATH
+        with wave.open(PATH, "r") as w:
+            n_channels = w.getnchannels()
+            # print(w.readframes(w.getnframes()))
+            fr = w.getframerate()
+            sampwidth = w.getsampwidth()
+            raw = w.readframes(w.getnframes())
+        if sampwidth == 1:
+            dtype = np.uint8   # 8-bit PCM
+        elif sampwidth == 2:
+            dtype = np.float16# 16-bit PCM
+        elif sampwidth == 4:
+            dtype = np.float32# 32-bit PCM
+        else:
+            raise ValueError("Unsupported sample width")
+
+        all_channels = np.frombuffer(raw, dtype=np.int16)
+        all_channels = all_channels.reshape(-1, n_channels)
+        all_channels = all_channels.T
+        all_channels = all_channels.astype(np.float32) / 32768.0
+
+        wave_time = all_channels.T.shape[0] / fr
+        lens = math.floor(wave_time * 1000 / Config.ARDUINO_CLK)
+        print(wave_time)
+        p_play_recorded_Pres = Process(target=play_recorded_press, args=(q_pres, all_channels[2:], lens,), daemon=True)
+        p_play_recorded_Pres.start()
+
+        # all_channels = np.frombuffer(raw, dtype=np.int16).copy()   # now writable
+        # all_channels = all_channels.reshape(-1, n_channels)
+        # all_channels = all_channels.T
+        # all_channels[:2] = all_channels[:2].astype(np.float32) / 32768.0
+
+
 
     buffer = []
     start_time = time.time()
 
+    index = 0
+    lastTime = 0
     while not stop_evt.is_set():
-        data = stream.read(framesize, exception_on_overflow=False)
-        arr = np.frombuffer(data, dtype=np.float32)
+        # print(framesize)
+        arr:Optional[np.ndarray] = None
+        if not Config.PLAY_RECORD:
+            if stream is not None:
+                data = stream.read(framesize, exception_on_overflow=False)
+                arr = np.frombuffer(data, dtype=np.float32)
+            else:
+                print("streaming is none! exiting the program")
+                exit()
+        else:
+            if all_channels is None:
+                print("all_channels is none! exiting the program")
+                exit()
+
+            if not index > math.ceil(all_channels.shape[-1] / framesize):
+                while (time.monotonic() - lastTime) * 1000 < Config.AUDIO_CHUNK_MS: 
+                    pass
+
+                arr = all_channels[0:2, index * framesize : (index + 1) * framesize]
+                index += 1
+                lastTime = time.monotonic()
+
+        # HERE
         if Config.MIMIC_STEREO:
-            arr = np.stack([arr, arr], axis=0)
+            if arr is not None:
+                arr = np.stack([arr, arr], axis=0)
         try:
             q_audio_playback.put_nowait(arr)
         except pyqueue.Full:
             print("q_audio_playback queue is full!!!")
 
-        buffer.append(arr)
+        if arr is not None:
+            buffer.append(arr)
 
         if (time.time() - start_time) > vibra_delay:
             try:
@@ -67,8 +137,9 @@ def AudioCapture(stop_evt: Event, q_audio_playback: Queue, q_audio_vib: Queue, q
         except pyqueue.Full:
             print("q_audio_therm queue is full!!!")
 
-    stream.stop_stream()
-    stream.close()
+    if stream is not None:
+        stream.stop_stream()
+        stream.close()
     pa.terminate()
 
 # -------------------- Audio Playback --------------------
@@ -177,3 +248,33 @@ def AudioCaptureDualMics(stop_evt: Event,
     right_stream.stop_stream()
     right_stream.close()
     pa.terminate()
+
+
+def play_recorded_press(q_pres: Queue, pres_Channel: np.ndarray, lens:int ):
+
+    print("play recorded press!")
+    
+    pressIndex = 0
+    lastPress = 0
+
+    while pressIndex < lens:
+        while 1000 * (time.monotonic() - lastPress) > Config.ARDUINO_CLK: 
+            lastPress = time.monotonic()
+            # print(pres_Channel[:, math.floor(pressIndex * 16000 * 70 / 1000)])
+            press = pres_Channel[:, math.floor(pressIndex * 16000 * 70 / 1000)] * 1023.0
+            print(press)
+            pdL = press[0:8]
+            pdR = press[8:]
+            row_a = ",".join(str(int(x)) for x in pdR)   # right half
+            row_b = ",".join(str(int(x)) for x in pdL)   # left half
+
+            # print(f"[1;{row_a};{row_b}]")
+
+
+
+
+            pressIndex += 1
+
+            
+
+            q_pres.put(f"1;{row_a};{row_b}")

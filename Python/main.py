@@ -51,7 +51,8 @@ def main():
     p_commander = Process(target=Commander, args=(stop_evt, q_pres, q_vib, q_therm, q_cmd, q_unity,), daemon= True) 
     p_vib = Process(target=dsp_vib, args=(stop_evt, q_audio_vib, q_vib,), daemon=True)
     p_therm = Process(target=dsp_therm, args=(stop_evt, q_audio_therm, q_therm,), daemon=True)
-    p_audiocapture = Process(target=AudioCaptureDualMics, args=(stop_evt, q_audio_playback, q_audio_vib, q_audio_therm), daemon=True)
+    # p_audiocapture = Process(target=AudioCapture, args=(stop_evt, q_audio_playback, q_audio_vib, q_audio_therm), daemon=True)
+    p_audiocapture = Process(target=AudioCapture, args=(stop_evt, q_audio_playback, q_audio_vib, q_audio_therm, q_pres), daemon=False)
     p_audioplayback = Process(target=AudioPlayback, args=(stop_evt, q_audio_playback), daemon=True)
     p_serial = Process(target=read_from_serial, args=(stop_evt, q_pres, port, baud,), daemon=True)
     # p_socket = Process(target=SocketToUnity, args=(stop_evt, q_unity, 1688, ), daemon=True)
@@ -65,22 +66,22 @@ def main():
     p_therm.start()
     p_audiocapture.start()
     p_audioplayback.start()
-    p_serial.start()
+    # p_serial.start()
     # p_socket.start()
     # p_wsocket.start()
 
     # workaround: because there's 5 mysterious data in q_pres, we clean them all first
-    time.sleep(3)
-    while not q_pres.empty():
-        q_pres.get_nowait()
-    while not q_vib.empty():
-        q_vib.get_nowait()
-    while not q_therm.empty():
-        q_therm.get_nowait()
-    while not q_cmd.empty():
-        q_cmd.get_nowait()
-    while not q_unity.empty():
-        q_unity.get_nowait()
+    # time.sleep(3)
+    # while not q_pres.empty():
+    #     q_pres.get_nowait()
+    # while not q_vib.empty():
+    #     q_vib.get_nowait()
+    # while not q_therm.empty():
+    #     q_therm.get_nowait()
+    # while not q_cmd.empty():
+    #     q_cmd.get_nowait()
+    # while not q_unity.empty():
+    #     q_unity.get_nowait()
     # while not q_wav.empty():
     #     q_wav.get_nowait()
 

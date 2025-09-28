@@ -1,3 +1,4 @@
+
 # pip install pyaudio soundfile pyserial numpy
 import time
 import threading
@@ -6,17 +7,16 @@ import sys
 from serial.tools import list_ports
 import numpy as np
 import pyaudio
+from . import DataFeelCenter
 from DataFeelCenter import token
 from DataFeelProcess.DFHandler import Worker, Commander
 import soundfile as sf
 import serial
-import wave
 from multiprocessing.synchronize import Event
 from multiprocessing import  Event, Process, Queue
 import multiprocessing
 # ===================== Config =====================
-SAMPLE_RATE      = 16000
-
+SAMPLE_RATE      = 44100
 BLOCK_FRAMES     = 1024
 DURATION_SEC     = 10
 
@@ -28,8 +28,8 @@ SER_PORT         = "COM5"       # e.g. "/dev/ttyUSB0"
 SER_BAUD         = 115200
 SER_SLEEP_S      = 0.002        # small yield for serial thread
 
-WAV_OUT          = "mics_plus_serial1.wav"
-TOTAL_CHANNELS   = 18           # 2 mics + 8 serial channels (ch3..ch10)
+WAV_OUT          = "mics_plus_serial.wav"
+TOTAL_CHANNELS   = 10           # 2 mics + 8 serial channels (ch3..ch10)
 
 # Scale raw serial ints (e.g., 0..1023) to audio range [-1, 1] or [0, 1]
 SERIAL_SCALE     = 1.0 / 1023.0 # set to 1.0 to write raw ints as floats
@@ -43,7 +43,7 @@ def play():
     
     q_cmd = Queue()
     stop_evt = multiprocessing.Event()
-    play_= Process(target=playAudioXXX, args=(stop_evt, q_cmd,), daemon= True)
+    play_= Process(target=playAudio, args=(stop_evt, q_cmd,), daemon= True)
     p_worker = Process(target=Worker, args=(stop_evt, q_cmd,), daemon= True)
     play_.start()
     p_worker.start()
@@ -51,36 +51,7 @@ def play():
     play_.join()
 
 
-def playAudioXXX(stop_evt: Queue, q_press: Queue):
-    # Open a WAV file
-    wf = wave.open(WAV_OUT, 'rb')
-
-# Initialize PyAudio
-    p = pyaudio.PyAudio()
-
-# Open a stream for playback
-    stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
-                    channels=2,
-                    rate=wf.getframerate(),
-                    output=True,
-                    output_device_index=1)
-
-# Read and play audio data in chunks
-    chunk_size = 1024
-    data = wf.readframes(chunk_size)
-    print()
-    while data:
-        stream.write(data)
-        data = wf.readframes(chunk_size)
-
-# Stop and close the stream
-    stream.stop_stream()
-    stream.close()
-
-# Terminate PyAudio
-    p.terminate()
-
-def playAudio(stop_evt: Queue, q_press: Queue):
+def playAudio(stop_evt: Queue, q_cmd: Queue):
     # ser_q = queue.Queue()
     # stop_evt = threading.Event()
     # th = threading.Thread(target=serial_reader, args=( ser_q, stop_evt), daemon=True)
@@ -94,27 +65,22 @@ def playAudio(stop_evt: Queue, q_press: Queue):
                 block = f.read(BLOCK_SIZE, dtype='float32', always_2d=True)
                 if len(block) == 0:
                     break
+                print(block)
                 stereo = block[:, :2]
-                pdL = block[:, 2:10]
-                pdR = block[:, 10:]
-                print(1)
-                for i in range(pdL.shape[0]):
-                    row_a = ",".join(map(str, pdR[i]))
-                    row_b = ",".join(map(str, pdL[i]))
-                    # print(f"[{row_a};{row_b}]")
-                    # q_press.put(f"[{row_a};{row_b}]")
-                    
+                pd = block[:, 3:]
                 
-                # for i in pdL:
-                #     print(','.join(str(x) for x in i))
-                # print(pdL)
-                # q_press.put()
                 stream.write(stereo.tobytes())
-                print("1")
-
+                for e in pd[0]:
+                    if e * 1023 > 60:
+                        print(e)
+                        t0 = token(superDotID=0, therIntensity=0, vibFrequency=100, vibIntensity=e, ledList=[[0,0,0]]*8)
+                        q_cmd.put_nowait(("useToken", (t0, )))
+                        break
+                else:
+                    t0 = token(superDotID=0, therIntensity=0, vibFrequency=100, vibIntensity=0, ledList=[[0,0,0]]*8)
+                    q_cmd.put_nowait(("useToken", (t0, )))
 
         finally:
-            print("out")
             stream.stop_stream()
             stream.close()
             pa.terminate()

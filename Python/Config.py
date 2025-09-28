@@ -1,11 +1,12 @@
 
 class Config:
-    INPUT_DEVICE_INDEX = 1
+    INPUT_DEVICE_INDEX = 4
+    ARDUINO_CLK = 70
 
-    LEFT_MIC_INDEX = 2
-    RIGHT_MIC_INDEX = 1
+    LEFT_MIC_INDEX = 3
+    RIGHT_MIC_INDEX = 4
 
-    OUTPUT_DEVICE_INDEX = 8
+    OUTPUT_DEVICE_INDEX = 5
     SAMPLERATE = 16000
     AUDIO_CHUNK_MS = 70
 
@@ -19,4 +20,6 @@ class Config:
     THERM_OUT_SCALE = 1
 
     
-    MIMIC_STEREO = True
+    RECORD_PATH = "./mock.wav"
+    PLAY_RECORD = True
+    MIMIC_STEREO = False
