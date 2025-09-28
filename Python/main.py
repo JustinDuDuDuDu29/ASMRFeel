@@ -10,6 +10,7 @@ from DataProcess.DataHandler import dsp_therm, dsp_vib
 from SerialProcess.SerialHandler import read_from_serial
 from DataFeelCenter import DataFeelCenter, token
 from SocketToUnity import SocketToUnity
+from RecordProcess.Recorder import Recorder, RecorderAudioOnly
 
 import time
 
@@ -40,6 +41,7 @@ def main():
     q_audio_therm = Queue(maxsize=1)
 
     q_pres = Queue()
+    q_pres_record = Queue()
     q_vib = Queue()
     q_therm = Queue()
     q_cmd = Queue()
@@ -51,9 +53,11 @@ def main():
     p_commander = Process(target=Commander, args=(stop_evt, q_pres, q_vib, q_therm, q_cmd, q_unity,), daemon= True) 
     p_vib = Process(target=dsp_vib, args=(stop_evt, q_audio_vib, q_vib,), daemon=True)
     p_therm = Process(target=dsp_therm, args=(stop_evt, q_audio_therm, q_therm,), daemon=True)
-    p_audiocapture = Process(target=AudioCaptureDualMics, args=(stop_evt, q_audio_playback, q_audio_vib, q_audio_therm), daemon=True)
+    p_audiocapture = Process(target=AudioCapture, args=(stop_evt, q_audio_playback, q_audio_vib, q_audio_therm), daemon=True)
     p_audioplayback = Process(target=AudioPlayback, args=(stop_evt, q_audio_playback), daemon=True)
-    p_serial = Process(target=read_from_serial, args=(stop_evt, q_pres, port, baud,), daemon=True)
+    p_serial = Process(target=read_from_serial, args=(stop_evt, q_pres, q_pres_record, port, baud,), daemon=True)
+
+    p_recorder = Process(target=RecorderAudioOnly, args=(stop_evt, q_pres_record,), daemon=True)
     # p_socket = Process(target=SocketToUnity, args=(stop_evt, q_unity, 1688, ), daemon=True)
     # p_wsocket = Process(target=SocketToUnity, args=(stop_evt, q_wav, 1689, ), daemon=True)
     
@@ -66,6 +70,7 @@ def main():
     p_audiocapture.start()
     p_audioplayback.start()
     p_serial.start()
+    p_recorder.start()
     # p_socket.start()
     # p_wsocket.start()
 
@@ -81,6 +86,8 @@ def main():
         q_cmd.get_nowait()
     while not q_unity.empty():
         q_unity.get_nowait()
+    while not q_pres_record.empty():
+        q_pres_record.get_nowait()
     # while not q_wav.empty():
     #     q_wav.get_nowait()
 
@@ -102,6 +109,7 @@ def main():
         p_audioplayback.join()
         p_vib.join()
         p_therm.join()
+        p_recorder.join()
         # p_socket.join()
         # p_wsocket.join()
         print("Stopped cleanly.")
