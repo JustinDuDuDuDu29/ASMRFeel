@@ -10,18 +10,51 @@ from Plot_Window.RollingPlot import RollingPlot
 import sys
 import os
 import time
+import librosa
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from Config import Config
 
-def dsp_vib(stop_evt: Event, q_audio_vib: Queue, q_vib: Queue):
+def dsp_vib(stop_evt: Event, q_audio_vib: Queue, q_vib: Queue, init_evt: Event):
+    """smooth_step: Smoothly step from prev to target using different attack and release rates."""
+    prev_left_vib  = 0.0
+    prev_right_vib = 0.0
+
+    # 上升（攻擊）與下降（釋放）的平滑係數（0~1，越大變化越快）
+    ATTACK_ALPHA  = 0.35   # 例如 0.25~0.5 之間自行微調
+    RELEASE_ALPHA = 0.10   # 例如 0.05~0.2 之間自行微調
+
+    def smooth_step(prev: float, target: float, attack: float, release: float) -> float:
+        alpha = attack if target > prev else release
+        return prev + alpha * (target - prev)
+    
     """Extract RMS from latest audio and push to q_vib."""
+    framesize = int(Config.SAMPLERATE * Config.AUDIO_CHUNK_MS / 1000)
+    leftPitch = librosa.yin(np.zeros((1120,)), frame_length= framesize ,fmin=50, fmax=500, sr=Config.SAMPLERATE)
+    rightPitch = librosa.yin(np.zeros((1120,)), frame_length= framesize ,fmin=50, fmax=500, sr=Config.SAMPLERATE)
+
+    
+    # plt.ion()
+    # fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6))
+    # hop_s = Config.AUDIO_CHUNK_MS / 1000.0
+    # leftFreq_plot  = RollingPlot(ax1, "leftFreq", "hz", 40.0, 500.0, 3.0, hop_s,
+    #                             with_second=True, second_label="hz")
+    # rightFreq_plot  = RollingPlot(ax2, "rightFreq", "hz", 40.0, 500.0, 3.0, hop_s,
+    #                             with_second=True, second_label="hz")
+    # fig.tight_layout()
+    # leftFreq_plot.update(0)
+    # rightFreq_plot.update(0)
+    # plt.pause(0.001)
+    init_evt.set()
     while not stop_evt.is_set():
+        st = time.time()
         try:
-            arr = q_audio_vib.get(timeout=0.1)
+        
+            arr = q_audio_vib.get()
             left = arr[0] if arr.ndim > 1 else arr
             right = arr[1] if arr.ndim > 1 else arr
+            # print(f"t1 loop time: {time.time()-t1:.3f}s")
 
 
             
@@ -29,14 +62,63 @@ def dsp_vib(stop_evt: Event, q_audio_vib: Queue, q_vib: Queue):
             rightRms = float(np.sqrt(np.mean(right**2)))
             leftVib = leftRms * Config.VIB_OUT_SCALE
             rightVib = rightRms * Config.VIB_OUT_SCALE
+            # print(f"t2 loop time: {time.time()-t2:.3f}s")
+
+            st = time.time()
+            try:
+                # print(left.shape, right.shape)
+                leftPitch = librosa.yin(left, frame_length= framesize ,fmin=50, fmax=500, sr=Config.SAMPLERATE)
+                rightPitch = librosa.yin(right, frame_length= framesize ,fmin=50, fmax=500, sr=Config.SAMPLERATE)
+                
+                # rightPitch = 100
+                
+                # Use median or mean to get a single value for the frame
+                leftFreq = float(np.median(leftPitch))
+                rightFreq = float(np.median(rightPitch))
+                if leftFreq >= 300.0:
+                    leftVib = 0.2 * Config.VIB_OUT_SCALE
+                else:
+                    leftVib = 0
+                if rightFreq >= 300.0:
+                    rightVib = 0.2 * Config.VIB_OUT_SCALE
+                else:
+                    rightVib = 0
+                
+                # 用單極低通平滑（上升快、下降慢）
+                # print(f"now:{leftVib}")
+                leftVib  = smooth_step(prev_left_vib,  rightVib,  ATTACK_ALPHA, RELEASE_ALPHA)
+                rightVib = smooth_step(prev_right_vib, rightVib, ATTACK_ALPHA, RELEASE_ALPHA)
+
+                # print(leftVib)
+
+                # 更新狀態供下個迴圈使用
+                prev_left_vib  = leftVib
+                prev_right_vib = rightVib
+
+                # print("Left Pitch:", leftFreq, "Hz")
+                # print(f"Left Pitch: {leftFreq:.2f} Hz, Right Pitch: {rightFreq:.2f} Hz")
+            except Exception as e:
+                print("Pitch extraction failed:", e)
+                leftFreq = 0.0
+                rightFreq = 0.0
+            # print(f"Pitch extraction time: {time.time()-st:.3f}s")
+            # print(f"t3 loop time: {time.time()-t3:.3f}s")
+
+            # leftFreq_plot.update(leftFreq)
+            # rightFreq_plot.update(rightFreq)
+            # print(f"t4 loop time: {time.time()-t4:.3f}s")
+            
             try:
                 # print(f"vib_level: {vib_level}")
                 q_vib.put_nowait((leftVib, rightVib))
             except pyqueue.Full:
                 print("q_vib full!!!")
+            # print(f"t5 loop time: {time.time()-t5:.3f}s")
         except pyqueue.Empty:
             print("audio vib empty, waiting...")
             continue
+        # plt.pause(0.001)
+        # print(f"dsp_vib loop time: {time.time()-st:.3f}s")
 
 def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: float = 2e-5, smooth_strength: float = 0.15):
     """Extract tone features from latest audio and push to q_therm."""
@@ -44,7 +126,7 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
         """Clamp a frequency (Hz) to a valid FFT bin index [0, nfft//2]."""
         return int(np.clip(np.floor(hz / (sr / float(nfft))), 0, nfft // 2))
 
-    def tone_features(frame: np.ndarray, sr: int, nfft: int) -> tuple[float, float, float, float, float]:
+    def tone_features(frame: np.ndarray, sr: int, nfft: int) -> tuple[float, float, float, float, float, float]:
         """
         Compute tone-related features on a mono frame:
         - centroid_hz, centroid_norm in [0,1]
@@ -72,6 +154,9 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
         # High-frequency ratio (>= 3 kHz)
         hf_bin = _hz_to_bin(3000, nfft, sr)
         hf_ratio = float(np.sum(pow_[hf_bin:]) / total_pow)
+        lf_bin = _hz_to_bin(50, nfft, sr)
+        lf_ratio = float(np.sum(pow_[:lf_bin]) / total_pow)
+        # print(hf_ratio, lf_ratio)
 
         # Harmonicity proxy: more low vs mid-high energy => "more voiced"
         lf_max = _hz_to_bin(2000, nfft, sr)   # < 2 kHz
@@ -80,7 +165,7 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
         midh = float(np.sum(pow_[lf_max:mhh_max if (mhh_max := mh_max) else lf_max]) + 1e-12)
         harmonicity = float(lf / (lf + midh))  # larger => more harmonic/voiced
 
-        return centroid_hz, centroid_norm, sfm, hf_ratio, harmonicity
+        return centroid_hz, centroid_norm, sfm, hf_ratio, harmonicity, lf_ratio
     
 
     hop_s = Config.AUDIO_CHUNK_MS / 1000.0
@@ -94,6 +179,15 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
     # fig, ax3 = plt.subplots(1, 1, figsize=(10, 6))
     # tone_plot  = RollingPlot(ax3, "Tone (Breathy-aware, 0..1)", "Tone (0..1)", 0.0, 1.0, 3.0, hop_s,
     #                           with_second=True, second_label="Tone (EMA)")
+    # fig.tight_layout()
+
+    # plt.ion()
+    # fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(5, 1, figsize=(10, 8), sharex=True)
+    # cn_plot  = RollingPlot(ax1, "spectral centroid", "cn (0..1)", 0.0, 1.0, 3.0, hop_s, with_second=True, second_label="cn")
+    # sfm_plot = RollingPlot(ax2, "spectral flatness measure", "sfm (0..1)", 0.0, 1.0, 3.0, hop_s, with_second=True, second_label="sfm")
+    # hfr_plot  = RollingPlot(ax3, "high-frequency ratio", "hfr (0..10)", 0.0, 1.0, 3.0, hop_s, with_second=True, second_label="hfr")
+    # lfr_plot  = RollingPlot(ax4, "low-frequency ratio", "lfr (0..10)", 0.0, 1.0, 3.0, hop_s, with_second=True, second_label="lfr")
+    # harm_plot  = RollingPlot(ax5, "harmonicity proxy", "harm (0..1)", 0.0, 3.0, 3.0, hop_s, with_second=True, second_label="harm")
     # fig.tight_layout()
 
 
@@ -115,7 +209,7 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
         else:
             # choose nfft >= len(arr), power of two, min 512
             nfft = max(512, 1 << (len(left) - 1).bit_length())
-            _, cn, sfm, hfr, harm = tone_features(left, Config.SAMPLERATE, nfft=nfft)
+            _, cn, sfm, hfr, harm, lfr = tone_features(left, Config.SAMPLERATE, nfft=nfft)
 
             # mix: brighter / noisier / high-freq -> hotter; harmonic (voiced) -> cooler
             # from your prototype: 0.45*cn + 0.25*sfm + 0.20*hfr + 0.10*(1 - harm)
@@ -128,16 +222,23 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
 
         # EMA smoothing
         left_tone_smooth = (1.0 - ema_alpha) * left_tone_smooth + ema_alpha * left_tone_mix
-        # tone_plot.update(tone_mix, tone_smooth)
         left_therm = left_tone_smooth * Config.THERM_OUT_SCALE
 
+        # Update plots
+        # cn_plot.update(cn)
+        # sfm_plot.update(sfm)
+        # hfr_plot.update(hfr)
+        # lfr_plot.update(lfr)
+        # harm_plot.update(harm)
+
+        # tone_plot.update(tone_mix, tone_smooth)
 
         # right channel
         if rightRms < rms_gate:
             right_tone_mix = 0.0
         else:
             nfft = max(512, 1 << (len(right) - 1).bit_length())
-            _, cn, sfm, hfr, harm = tone_features(right, Config.SAMPLERATE, nfft=nfft)
+            _, cn, sfm, hfr, harm, lfr = tone_features(right, Config.SAMPLERATE, nfft=nfft)
 
             # right_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.10 * (1.0 - harm)
 

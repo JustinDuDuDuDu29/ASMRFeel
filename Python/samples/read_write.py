@@ -1,8 +1,9 @@
+from random import uniform
 from time import sleep
 from datafeel.device import VibrationMode, discover_devices, LedMode, ThermalMode, VibrationWaveforms
 devices = discover_devices(4)
 
-device = devices[0]
+device = devices[3]
 
 print("found", len(devices), "devices")
 import inspect
@@ -13,11 +14,11 @@ import inspect
 
 # show the source we’re actually running
 # print(inspect.getsource(m))
-device.registers.set_thermal_mode(ThermalMode.MANUAL)
-device.registers.set_thermal_intensity(1.0)
-sleep(3)
+# device.registers.set_thermal_mode(ThermalMode.MANUAL)
+# device.registers.set_thermal_intensity(1.0)
+# sleep(3)
 # device.registers.set_thermal_intensity(0.0)
-device.registers.set_thermal_intensity(0.2)
+# device.registers.set_thermal_intensity(0.2)
 # sleep(2.5)
 # device.registers.set_thermal_intensity(0)
 # # Set the global LED color
@@ -98,10 +99,28 @@ device.registers.set_thermal_intensity(0.2)
 #
 #
 # # Vibration Low-Level API
-# device.registers.set_vibration_mode(VibrationMode.MANUAL)
-# device.registers.set_vibration_frequency(200)
-# device.registers.set_vibration_intensity(1.0)
-# sleep(3)
+device.registers.set_vibration_mode(VibrationMode.MANUAL)
+# while True:
+device.registers.set_vibration_frequency(100)
+device.registers.set_vibration_intensity(0.7)
+sleep(uniform(0.3, 0.5))
+device.registers.set_thermal_mode(ThermalMode.MANUAL)
+while True:
+    device.registers.set_thermal_intensity(0.3)
+    sleep(2)
+    device.registers.set_thermal_intensity(0.0)
+    sleep(2)
+    # device.registers.set_vibration_frequency(000)
+    # device.registers.set_vibration_intensity(0)
+    # sleep(uniform(0.1, 0.3))
+
+# for x in VibrationWaveforms:
+#     print(f"Playing {x}")
+
+#     vibration_sequence = [x]
+#     device.play_vibration_sequence(vibration_sequence)
+#     sleep(1)
+# device.play_vibration_sequence
 #
 # # LED Low-Level API
 # device.registers.set_led_mode(LedMode.INDIVIDUAL_MANUAL)

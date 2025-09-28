@@ -55,7 +55,7 @@ class DataFeelCenter():
                 targetDot.heatTimer = min(Config.HEAT_TIME, targetDot.heatTimer + (time.time() - targetDot.lastTime))
                 if targetDot.heatTimer < Config.HEAT_TIME:
                     # print("Heating up...")
-                    token.therIntensity = 0.5
+                    token.therIntensity = 1.0
                 else:
                     # print("Heat controlling...")
                     token.therIntensity = 0.1
@@ -97,7 +97,7 @@ class DataFeelCenter():
             token.vibIntensity = targetDot.vibIntensity
         # token.vibIntensity = min(abs(token.vibIntensity), 1)
         # if token.vibIntensity <= 0.5:
-        token.vibIntensity = 0
+            # token.vibIntensity = 0
 
         if token.ledList is None:
             token.ledList = targetDot.ledList

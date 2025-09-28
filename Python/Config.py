@@ -13,7 +13,7 @@ class Config:
     AUDIO_PLAYBACK_DELAY_S = 2
     VIBRATION_DELAY_S = 2
 
-    VIB_OUT_SCALE = 20
+    VIB_OUT_SCALE = 1
     HVIB_OUT_SCALE = 1
 
     HEAT_TIME = 1.5
