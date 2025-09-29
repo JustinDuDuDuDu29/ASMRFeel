@@ -36,9 +36,9 @@ def main():
     port = choose_port()
     print(f"Starting connection at {port} {baud}…")
 
-    q_audio_playback = Queue(maxsize=1)
-    q_audio_vib = Queue(maxsize=1)
-    q_audio_therm = Queue(maxsize=1)
+    q_audio_playback = Queue()
+    q_audio_vib = Queue()
+    q_audio_therm = Queue()
 
     q_pres = Queue()
     q_pres_record = Queue()

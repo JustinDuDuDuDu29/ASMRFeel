@@ -155,14 +155,14 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 # led[i] = [int(val) // 4] * 3
                 if int(val) >= 110: numsT2 += 1
 
-                if((float(val) - float(lastP[i])) > 130) and numsT2 > 3 :
-                    pLastIsHit = True
-                    print("Hitting")
-                    t2.vibIntensity = 1*Config.HVIB_OUT_SCALE
-                    t2.vibFrequency = 100
-                    t2.heatup = True
-                    t2.ledList = [[255, 0, 0]]*8
-                    break
+                # if((float(val) - float(lastP[i])) > 130) and numsT2 > 3 :
+                #     pLastIsHit = True
+                #     print("Hitting")
+                #     t2.vibIntensity = 1*Config.HVIB_OUT_SCALE
+                #     t2.vibFrequency = 100
+                #     t2.heatup = True
+                #     t2.ledList = [[255, 0, 0]]*8
+                #     break
 
                 if t2.vibIntensity is not None:
                     t2.vibFrequency = 10
@@ -175,7 +175,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
 
                 # t2.ledList[i] = [255, 0, 0]
         else: 
-            if numsT2 > 4 and not pLastIsHit:
+            if numsT2 > Config.HOLD_COUNT and not pLastIsHit:
                 print(">4")
                 t2.vibIntensity = .2*Config.HVIB_OUT_SCALE
                 t2.vibFrequency = 98
@@ -196,14 +196,14 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 # map int(val) from 0-1023 to 0-255
                 if int(val) >= 110: numsT3 += 1
 
-                if((float(val) - float(lastP1[i])) > 130) and numsT3 > 3 :
-                    p1LastIsHit = True
-                    print("Hitting")
-                    t3.vibIntensity = 1*Config.HVIB_OUT_SCALE
-                    t3.vibFrequency = 100
-                    t3.heatup = True
-                    t3.ledList = [[255, 0, 0]]*8
-                    break
+                # if((float(val) - float(lastP1[i])) > 130) and numsT3 > 3 :
+                #     p1LastIsHit = True
+                #     print("Hitting")
+                #     t3.vibIntensity = 1*Config.HVIB_OUT_SCALE
+                #     t3.vibFrequency = 100
+                #     t3.heatup = True
+                #     t3.ledList = [[255, 0, 0]]*8
+                #     break
                 if t3.vibIntensity is not None:
                     t3.vibFrequency = 10
                     t3.vibIntensity= max(t3.vibIntensity, int(val) / 512.0)*Config.HVIB_OUT_SCALE
@@ -214,7 +214,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 t3.ledList[i] = [int(val) // 4] * 3
                 
         else: 
-            if numsT3 > 4 and not p1LastIsHit:
+            if numsT3 > Config.HOLD_COUNT and not p1LastIsHit:
                 print(">4")
                 t3.vibIntensity = .2*Config.HVIB_OUT_SCALE
                 t3.vibFrequency = 98
@@ -287,7 +287,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         # print(t2.ledList)
 
         try:
-            # print(q_cmd.qsize())
+            print(q_cmd.qsize())
             q_cmd.put_nowait(("useToken", (t0, True)))
             q_cmd.put_nowait(("useToken", (t1, True)))
             q_cmd.put_nowait(("useToken", (t2, )))
