@@ -87,9 +87,9 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         '''Vibration Adjustment------------------'''
 
         if vib[0] > 0:
-            vibFreqLeft = 175
+            vibFreqLeft = 125
         if vib[1] > 0:
-            vibFreqRight = 175
+            vibFreqRight = 125
 
 
         heatUpLeft = False
@@ -243,45 +243,41 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         except pyqueue.Empty:
             pass
 
-        if buffer and (time.time() - start_time) > Config.AUDIO_PLAYBACK_DELAY_S:
-            (dredValue, dheatUpLeft) = buffer.pop(0)
 
         try:
             if heatUpRight:
-                right_redValue += Config.AUDIO_CHUNK_MS/1000.0
+                right_redValue += Config.AUDIO_CHUNK_MS/2000.0
                 if right_redValue >= 1.0: right_redValue = 1.0
             else:
-                right_redValue -= Config.AUDIO_CHUNK_MS/1000.0
+                right_redValue -= Config.AUDIO_CHUNK_MS/2000.0
                 if right_redValue <= 0.0: right_redValue = 0.0
             right_buffer.append((right_redValue, heatUpRight))
         except pyqueue.Empty:
             pass
 
+        
+        if buffer and (time.time() - start_time) > Config.AUDIO_PLAYBACK_DELAY_S:
+            (dredValue, dheatUpLeft) = buffer.pop(0)
+            if t0.ledList is None:
+                t0.ledList = [[0,0,0]] * 8
+
+            for i in range(8):
+                if dredValue:
+                        t0.ledList[i] = [int(dredValue*255), 0, 0]
+                else:
+                    t0.ledList[i] = [int(vib[0]*255), int(vib[0]*255), int(vib[0]*255)]
+                # if i == 0: print(t0.ledList[0])
+
         if right_buffer and (time.time() - start_time) > Config.AUDIO_PLAYBACK_DELAY_S:
             (right_dredValue, dheatUpRight) = right_buffer.pop(0)
-        
-        
-
-        if t0.ledList is None:
-            t0.ledList = [[0,0,0]] * 8
-
-        for i in range(8):
-            if dredValue:
-                    t0.ledList[i] = [int(dredValue*255), 0, 0]
-            else:
-                t0.ledList[i] = [int(vib[0]*255), int(vib[0]*255), int(vib[0]*255)]
-            # if i == 0: print(t0.ledList[0])
-
-        
-
-        if t1.ledList is None:
-            t1.ledList = [[0,0,0]] * 8
-        
-        for i in range(8):
-            if right_dredValue:
-                t1.ledList[i] = [int(right_dredValue*255), 0, 0]
-            else:
-                t1.ledList[i] = [int(vib[1]*255), int(vib[1]*255), int(vib[1]*255)]
+            if t1.ledList is None:
+                t1.ledList = [[0,0,0]] * 8
+            
+            for i in range(8):
+                if right_dredValue:
+                    t1.ledList[i] = [int(right_dredValue*255), 0, 0]
+                else:
+                    t1.ledList[i] = [int(vib[1]*255), int(vib[1]*255), int(vib[1]*255)]
 
 
         # print(t2.ledList)
