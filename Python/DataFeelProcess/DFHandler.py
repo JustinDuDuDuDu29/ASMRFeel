@@ -287,7 +287,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         # print(t2.ledList)
 
         try:
-            print(q_cmd.qsize())
+            # print(q_cmd.qsize())
             q_cmd.put_nowait(("useToken", (t0, True)))
             q_cmd.put_nowait(("useToken", (t1, True)))
             q_cmd.put_nowait(("useToken", (t2, )))

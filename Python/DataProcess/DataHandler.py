@@ -87,7 +87,7 @@ def dsp_vib(stop_evt: Event, q_audio_vib: Queue, q_vib: Queue, init_evt: Event):
                 
                 # 用單極低通平滑（上升快、下降慢）
                 # print(f"now:{leftVib}")
-                leftVib  = smooth_step(prev_left_vib,  rightVib,  ATTACK_ALPHA, RELEASE_ALPHA)
+                leftVib  = smooth_step(prev_left_vib,  leftVib,  ATTACK_ALPHA, RELEASE_ALPHA)
                 rightVib = smooth_step(prev_right_vib, rightVib, ATTACK_ALPHA, RELEASE_ALPHA)
 
                 # print(leftVib)
@@ -216,9 +216,9 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
             # mix: brighter / noisier / high-freq -> hotter; harmonic (voiced) -> cooler
             # from your prototype: 0.45*cn + 0.25*sfm + 0.20*hfr + 0.10*(1 - harm)
 
-            # left_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.10 * (1.0 - harm)
+            left_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.10 * (1.0 - harm)
 
-            left_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.05 * harm
+            # left_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.05 * harm
 
             left_tone_mix = float(np.clip(left_tone_mix, 0.0, 1.0))
 
@@ -242,9 +242,9 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
             nfft = max(512, 1 << (len(right) - 1).bit_length())
             _, cn, sfm, hfr, harm, lfr = tone_features(right, Config.SAMPLERATE, nfft=nfft)
 
-            # right_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.10 * (1.0 - harm)
+            right_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.10 * (1.0 - harm)
 
-            right_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.05 * harm
+            # right_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.05 * harm
 
             right_tone_mix = float(np.clip(right_tone_mix, 0.0, 1.0))
         right_tone_smooth = (1.0 - ema_alpha) * right_tone_smooth + ema_alpha * right_tone_mix

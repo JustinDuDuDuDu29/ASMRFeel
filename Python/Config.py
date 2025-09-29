@@ -3,13 +3,13 @@ timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
 class Config:
-    INPUT_DEVICE_INDEX = 11
+    INPUT_DEVICE_INDEX = 12
     ARDUINO_CLK = 70
 
-    LEFT_MIC_INDEX = 3
-    RIGHT_MIC_INDEX = 14
+    # LEFT_MIC_INDEX = 1
+    # RIGHT_MIC_INDEX = 3
 
-    OUTPUT_DEVICE_INDEX = 16
+    OUTPUT_DEVICE_INDEX = 17
     SAMPLERATE = 16000
     AUDIO_CHUNK_MS = 70
 
