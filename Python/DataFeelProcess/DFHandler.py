@@ -71,7 +71,11 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         toneRight = therm[1]
 
         TONE_THRESHOLD = 0.25
-        DURATION_THRESHOLD = 0.5
+        # DURATION_THRESHOLD = 0.5
+
+        #record mode
+        DURATION_THRESHOLD = 0.25
+        
         vibFreqLeft = 0
         vibFreqRight = 0
 
@@ -263,7 +267,10 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
 
             for i in range(8):
                 if dredValue:
-                        t0.ledList[i] = [int(dredValue*255), 0, 0]
+                    t0.ledList[i] = [int(dredValue*255), 0, 0]
+                    # if t0.vibIntensity is not None and t0.vibIntensity <= 0.1:
+                    if dheatUpLeft:
+                        t0.vibIntensity = 0.2* Config.VIB_OUT_SCALE
                 else:
                     t0.ledList[i] = [int(vib[0]*255), int(vib[0]*255), int(vib[0]*255)]
                 # if i == 0: print(t0.ledList[0])
@@ -276,6 +283,9 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
             for i in range(8):
                 if right_dredValue:
                     t1.ledList[i] = [int(right_dredValue*255), 0, 0]
+                    # if t1.vibIntensity is not None and t1.vibIntensity <= 0.1:
+                    if dheatUpRight:
+                        t1.vibIntensity = 0.2* Config.VIB_OUT_SCALE
                 else:
                     t1.ledList[i] = [int(vib[1]*255), int(vib[1]*255), int(vib[1]*255)]
 

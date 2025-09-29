@@ -22,8 +22,8 @@ def dsp_vib(stop_evt: Event, q_audio_vib: Queue, q_vib: Queue, init_evt: Event):
     prev_right_vib = 0.0
 
     # 上升（攻擊）與下降（釋放）的平滑係數（0~1，越大變化越快）
-    ATTACK_ALPHA  = 0.35   # 例如 0.25~0.5 之間自行微調
-    RELEASE_ALPHA = 0.10   # 例如 0.05~0.2 之間自行微調
+    ATTACK_ALPHA  = 0.7   # 例如 0.25~0.5 之間自行微調
+    RELEASE_ALPHA = 0.2   # 例如 0.05~0.2 之間自行微調
 
     def smooth_step(prev: float, target: float, attack: float, release: float) -> float:
         alpha = attack if target > prev else release
@@ -76,12 +76,12 @@ def dsp_vib(stop_evt: Event, q_audio_vib: Queue, q_vib: Queue, init_evt: Event):
                 # Use median or mean to get a single value for the frame
                 leftFreq = float(np.median(leftPitch))
                 rightFreq = float(np.median(rightPitch))
-                if leftFreq >= 300.0:
-                    leftVib = 0.2 * Config.VIB_OUT_SCALE
+                if leftFreq >= 400.0:  #300.0
+                    leftVib = 0.15 * Config.VIB_OUT_SCALE
                 else:
                     leftVib = 0
-                if rightFreq >= 300.0:
-                    rightVib = 0.2 * Config.VIB_OUT_SCALE
+                if rightFreq >= 400.0:
+                    rightVib = 0.15 * Config.VIB_OUT_SCALE
                 else:
                     rightVib = 0
                 
@@ -89,6 +89,10 @@ def dsp_vib(stop_evt: Event, q_audio_vib: Queue, q_vib: Queue, init_evt: Event):
                 # print(f"now:{leftVib}")
                 leftVib  = smooth_step(prev_left_vib,  leftVib,  ATTACK_ALPHA, RELEASE_ALPHA)
                 rightVib = smooth_step(prev_right_vib, rightVib, ATTACK_ALPHA, RELEASE_ALPHA)
+
+                # no-vib
+                leftVib = 0.0
+                rightVib = 0.0
 
                 # print(leftVib)
 
@@ -193,6 +197,7 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
 
 
     while not stop_evt.is_set():
+        cn, sfm, hfr, harm, lfr = 0.0, 0.0, 0.0, 0.0, 0.0
         # st = time.time()
         try:
             arr = q_audio_therm.get(timeout=0.1)
@@ -216,9 +221,15 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
             # mix: brighter / noisier / high-freq -> hotter; harmonic (voiced) -> cooler
             # from your prototype: 0.45*cn + 0.25*sfm + 0.20*hfr + 0.10*(1 - harm)
 
-            left_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.10 * (1.0 - harm)
+            # left_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.10 * (1.0 - harm)
 
             # left_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.05 * harm
+
+            #record mode(female)
+            left_tone_mix = 0.6 * cn + 0.4 * sfm + 0.20 * hfr + 0.05 * harm
+
+            #record mode(male)
+            # left_tone_mix = 0.1 * cn + 0.1 * sfm + 0.3 * lfr + 0.2 * (1.0 - harm)
 
             left_tone_mix = float(np.clip(left_tone_mix, 0.0, 1.0))
 
@@ -242,9 +253,15 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
             nfft = max(512, 1 << (len(right) - 1).bit_length())
             _, cn, sfm, hfr, harm, lfr = tone_features(right, Config.SAMPLERATE, nfft=nfft)
 
-            right_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.10 * (1.0 - harm)
+            # right_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.10 * (1.0 - harm)
 
             # right_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.05 * harm
+
+            #record mode(female)
+            right_tone_mix = 0.6 * cn + 0.4 * sfm + 0.20 * hfr + 0.05 * harm
+
+            #record mode(male)
+            # right_tone_mix = 0.1 * cn + 0.1 * sfm + 0.3 * lfr + 0.2 * (1.0 - harm)
 
             right_tone_mix = float(np.clip(right_tone_mix, 0.0, 1.0))
         right_tone_smooth = (1.0 - ema_alpha) * right_tone_smooth + ema_alpha * right_tone_mix
