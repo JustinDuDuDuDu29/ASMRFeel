@@ -312,7 +312,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                     t1.ledList[i] = [int(vib[1]*255), int(vib[1]*255), int(vib[1]*255)]
 
             rightvib = vib[1]
-            
+
             # if t1.vibIntensity is not None and t1.vibIntensity <= 0.1:
             # if dheatUpRight:
             if right_dredValue > 0.15:
@@ -331,7 +331,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
             q_cmd.put_nowait(("useToken", (t1, True)))
             q_cmd.put_nowait(("useToken", (t2, )))
             q_cmd.put_nowait(("useToken", (t3, )))
-            # q_unity.put_nowait((t0, t1, t2, t3))
+            q_unity.put_nowait((t0, t1, t2, t3))
             
             # print(time.perf_counter()-last)
 

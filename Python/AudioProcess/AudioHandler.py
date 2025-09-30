@@ -157,6 +157,13 @@ def AudioPlayback(stop_evt: Event, q_audio_playback: Queue, playback_delay=Confi
                      rate=sr,
                      output=True,
                      output_device_index=Config.OUTPUT_DEVICE_INDEX)
+    
+    if Config.OUTPUT_DEVICE_INDEX2 != -1:
+        stream_noFeedback = pa.open(format=pyaudio.paFloat32,
+                        channels=2,
+                        rate=sr,
+                        output=True,
+                        output_device_index=Config.OUTPUT_DEVICE_INDEX2)
 
     buffer = []
     start_time = time.time()
@@ -173,9 +180,15 @@ def AudioPlayback(stop_evt: Event, q_audio_playback: Queue, playback_delay=Confi
             # play stereo audio Transpose stereo data from (2, framesize) to (framesize, 2) 
             data = buffer.pop(0).T.tobytes()
             stream.write(data)
+            if Config.OUTPUT_DEVICE_INDEX2 != -1:
+                stream_noFeedback.write(data)
 
     stream.stop_stream()
     stream.close()
+    
+    if Config.OUTPUT_DEVICE_INDEX2 != -1:
+        stream_noFeedback.stop_stream()
+        stream_noFeedback.close()
     pa.terminate()
 
 # -------------------- Audio Dual mic capture--------------------

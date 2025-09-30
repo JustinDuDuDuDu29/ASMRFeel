@@ -62,7 +62,7 @@ def main():
         p_recorder = Process(target=Recorder, args=(stop_evt, q_pres_record,), daemon=True)
     if not Config.PLAY_RECORD:
         p_serial = Process(target=read_from_serial, args=(stop_evt, q_pres, q_pres_record, port, baud,), daemon=True)
-    # p_socket = Process(target=SocketToUnity, args=(stop_evt, q_unity, 1688, ), daemon=True)
+    p_socket = Process(target=SocketToUnity, args=(stop_evt, q_unity, 1688, ), daemon=True)
     # p_wsocket = Process(target=SocketToUnity, args=(stop_evt, q_wav, 1689, ), daemon=True)
     
     
@@ -78,7 +78,7 @@ def main():
         p_recorder.start()
     if not Config.PLAY_RECORD:
         p_serial.start()
-    # p_socket.start()
+    p_socket.start()
     # p_wsocket.start()
 
     # workaround: because there's 5 mysterious data in q_pres, we clean them all first
@@ -118,7 +118,7 @@ def main():
         p_therm.join()
         if not Config.RECORD:
             p_recorder.join()
-        # p_socket.join()
+        p_socket.join()
         # p_wsocket.join()
         print("Stopped cleanly.")
 
