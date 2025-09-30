@@ -223,10 +223,11 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
 
             # left_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.10 * (1.0 - harm)
 
-            # left_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.05 * harm
-
-            #record mode(female)
-            left_tone_mix = 0.6 * cn + 0.4 * sfm + 0.20 * hfr + 0.05 * harm
+            if Config.STREAMING:
+                left_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.05 * harm
+            else:
+                #record mode(female)
+                left_tone_mix = 0.6 * cn + 0.4 * sfm + 0.20 * hfr + 0.05 * harm
 
             #record mode(male)
             # left_tone_mix = 0.1 * cn + 0.1 * sfm + 0.3 * lfr + 0.2 * (1.0 - harm)
@@ -255,10 +256,11 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
 
             # right_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.10 * (1.0 - harm)
 
-            # right_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.05 * harm
-
-            #record mode(female)
-            right_tone_mix = 0.6 * cn + 0.4 * sfm + 0.20 * hfr + 0.05 * harm
+            if Config.STREAMING:
+                right_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.05 * harm
+            else:
+                #record mode(female)
+                right_tone_mix = 0.6 * cn + 0.4 * sfm + 0.20 * hfr + 0.05 * harm
 
             #record mode(male)
             # right_tone_mix = 0.1 * cn + 0.1 * sfm + 0.3 * lfr + 0.2 * (1.0 - harm)
