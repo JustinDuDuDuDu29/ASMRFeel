@@ -87,8 +87,8 @@ def dsp_vib(stop_evt: Event, q_audio_vib: Queue, q_vib: Queue, init_evt: Event):
                 
                 # 用單極低通平滑（上升快、下降慢）
                 # print(f"now:{leftVib}")
-                leftVib  = smooth_step(prev_left_vib,  leftVib,  ATTACK_ALPHA, RELEASE_ALPHA)
-                rightVib = smooth_step(prev_right_vib, rightVib, ATTACK_ALPHA, RELEASE_ALPHA)
+                # leftVib  = smooth_step(prev_left_vib,  leftVib,  ATTACK_ALPHA, RELEASE_ALPHA)
+                # rightVib = smooth_step(prev_right_vib, rightVib, ATTACK_ALPHA, RELEASE_ALPHA)
 
                 # no-vib
                 leftVib = 0.0
@@ -97,8 +97,8 @@ def dsp_vib(stop_evt: Event, q_audio_vib: Queue, q_vib: Queue, init_evt: Event):
                 # print(leftVib)
 
                 # 更新狀態供下個迴圈使用
-                prev_left_vib  = leftVib
-                prev_right_vib = rightVib
+                # prev_left_vib  = leftVib
+                # prev_right_vib = rightVib
 
                 # print("Left Pitch:", leftFreq, "Hz")
                 # print(f"Left Pitch: {leftFreq:.2f} Hz, Right Pitch: {rightFreq:.2f} Hz")
@@ -227,7 +227,7 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
                 left_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.05 * harm
             else:
                 #record mode(female)
-                left_tone_mix = 0.6 * cn + 0.4 * sfm + 0.20 * hfr + 0.05 * harm
+                left_tone_mix = 0.6 * cn + 0.4 * sfm + 0.10 * hfr + 0.05 * harm
 
             #record mode(male)
             # left_tone_mix = 0.1 * cn + 0.1 * sfm + 0.3 * lfr + 0.2 * (1.0 - harm)
@@ -260,7 +260,7 @@ def dsp_therm(stop_evt: Event, q_audio_therm: Queue, q_therm: Queue, rms_gate: f
                 right_tone_mix = 0.45 * cn + 0.25 * sfm + 0.20 * hfr + 0.05 * harm
             else:
                 #record mode(female)
-                right_tone_mix = 0.6 * cn + 0.4 * sfm + 0.20 * hfr + 0.05 * harm
+                right_tone_mix = 0.6 * cn + 0.4 * sfm + 0.10 * hfr + 0.05 * harm
 
             #record mode(male)
             # right_tone_mix = 0.1 * cn + 0.1 * sfm + 0.3 * lfr + 0.2 * (1.0 - harm)

@@ -3,7 +3,7 @@ timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
 class Config:
-    INPUT_DEVICE_INDEX = 11
+    INPUT_DEVICE_INDEX = 9
     ARDUINO_CLK = 70
 
     # LEFT_MIC_INDEX = 1
@@ -32,4 +32,4 @@ class Config:
     PLAY_RECORD = False
     # MIMIC_STEREO = False
 
-    STREAMING = True # USE mic
+    STREAMING = False # USE mic

@@ -57,6 +57,20 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
     buffer = []
     right_buffer = []
     start_time = time.time()
+
+    '''Smoothing Parameters'''
+    prev_left_vib  = 0.0
+    prev_right_vib = 0.0
+
+    # 上升（攻擊）與下降（釋放）的平滑係數（0~1，越大變化越快）
+    ATTACK_ALPHA  = 0.7   # 例如 0.25~0.5 之間自行微調
+    RELEASE_ALPHA = 0.2   # 例如 0.05~0.2 之間自行微調
+
+    def smooth_step(prev: float, target: float, attack: float, release: float) -> float:
+        alpha = attack if target > prev else release
+        return prev + alpha * (target - prev)
+    ''''''
+    
     while not stop_evt.is_set():
         # print(q_pres.qsize(), q_vib.qsize(), q_therm.qsize())
         t = q_pres.get()
@@ -70,12 +84,13 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         toneLeft = therm[0]
         toneRight = therm[1]
 
-        TONE_THRESHOLD = 0.25
 
         if Config.STREAMING:
+            TONE_THRESHOLD = 0.25
             DURATION_THRESHOLD = 0.5
         else:
             #record mode
+            TONE_THRESHOLD = 0.3
             DURATION_THRESHOLD = 0.25
         
         vibFreqLeft = 0
@@ -270,12 +285,20 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
             for i in range(8):
                 if dredValue:
                     t0.ledList[i] = [int(dredValue*255), 0, 0]
-                    if t0.vibIntensity is not None and t0.vibIntensity <= 0.1:
-                    # if dheatUpLeft:
-                        t0.vibIntensity = 0.2* Config.VIB_OUT_SCALE
                 else:
                     t0.ledList[i] = [int(vib[0]*255), int(vib[0]*255), int(vib[0]*255)]
                 # if i == 0: print(t0.ledList[0])
+            
+            leftVib = vib[0]
+
+            # if t0.vibIntensity is not None and t0.vibIntensity <= 0.1:
+            # if dheatUpLeft:
+            if dredValue > 0.15:
+                leftVib = 0.2* Config.VIB_OUT_SCALE
+
+            trueVibLeft  = smooth_step(prev_left_vib,  leftVib,  ATTACK_ALPHA, RELEASE_ALPHA)
+            t0.vibIntensity  = trueVibLeft
+            prev_left_vib = trueVibLeft
 
         if right_buffer and (time.time() - start_time) > Config.AUDIO_PLAYBACK_DELAY_S:
             (right_dredValue, dheatUpRight) = right_buffer.pop(0)
@@ -285,11 +308,19 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
             for i in range(8):
                 if right_dredValue:
                     t1.ledList[i] = [int(right_dredValue*255), 0, 0]
-                    if t1.vibIntensity is not None and t1.vibIntensity <= 0.1:
-                    # if dheatUpRight:
-                        t1.vibIntensity = 0.2* Config.VIB_OUT_SCALE
                 else:
                     t1.ledList[i] = [int(vib[1]*255), int(vib[1]*255), int(vib[1]*255)]
+
+            rightvib = vib[1]
+            
+            # if t1.vibIntensity is not None and t1.vibIntensity <= 0.1:
+            # if dheatUpRight:
+            if right_dredValue > 0.15:
+                rightvib = 0.2* Config.VIB_OUT_SCALE
+
+            trueVibRight  = smooth_step(prev_right_vib,  rightvib,  ATTACK_ALPHA, RELEASE_ALPHA)
+            t1.vibIntensity  = trueVibRight
+            prev_right_vib = trueVibRight
 
 
         # print(t2.ledList)
