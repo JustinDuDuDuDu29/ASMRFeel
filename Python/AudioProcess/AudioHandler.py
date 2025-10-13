@@ -269,7 +269,7 @@ def play_recorded_press(q_pres: Queue, pres_Channel: np.ndarray, lens:int ):
             lastPress = time.monotonic()
             # print(pres_Channel[:, math.floor(pressIndex * 16000 * 70 / 1000)])
             press = pres_Channel[:, math.floor(pressIndex * 16000 * 70 / 1000)] * 1023.0
-            print(press)
+            # print(press)
             pdL = press[0:8]
             pdR = press[8:]
             row_a = ",".join(str(int(x)) for x in pdR)   # right half

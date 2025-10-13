@@ -187,7 +187,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
 
                 if t2.vibIntensity is not None:
                     t2.vibFrequency = 10
-                    t2.vibIntensity= max(t2.vibIntensity, int(val) / 512.0)*Config.HVIB_OUT_SCALE
+                    t2.vibIntensity= max(t2.vibIntensity, int(val) / 512.0)*0.8*Config.HVIB_OUT_SCALE
                 else: 
                     t2.vibFrequency = 10
                 if t2.ledList is None:
@@ -198,7 +198,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         else: 
             if numsT2 > Config.HOLD_COUNT and not pLastIsHit:
                 print(">4")
-                t2.vibIntensity = .2*Config.HVIB_OUT_SCALE
+                t2.vibIntensity = .3*Config.HVIB_OUT_SCALE
                 t2.vibFrequency = 98
                 t2.heatup = True
                 t2.ledList = [[0, 255, 0]]*8
@@ -227,7 +227,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 #     break
                 if t3.vibIntensity is not None:
                     t3.vibFrequency = 10
-                    t3.vibIntensity= max(t3.vibIntensity, int(val) / 512.0)*Config.HVIB_OUT_SCALE
+                    t3.vibIntensity= max(t3.vibIntensity, int(val) / 512.0)*0.8*Config.HVIB_OUT_SCALE
                 else: 
                     t2.vibFrequency = 10
                 if t3.ledList is None:
@@ -237,7 +237,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
         else: 
             if numsT3 > Config.HOLD_COUNT and not p1LastIsHit:
                 print(">4")
-                t3.vibIntensity = .2*Config.HVIB_OUT_SCALE
+                t3.vibIntensity = .3*Config.HVIB_OUT_SCALE
                 t3.vibFrequency = 98
                 t3.heatup = True
                 t3.ledList = [[0, 255, 0]]*8
