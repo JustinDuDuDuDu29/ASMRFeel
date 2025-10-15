@@ -62,20 +62,18 @@ class DataFeelCenter():
             if token.heatup:
                 targetDot.heatTimer = min(HEAT_TIME, targetDot.heatTimer + (time.time() - targetDot.lastTime))
                 if targetDot.heatTimer < HEAT_TIME:
-                    # print("Heating up...")
-                    if token.superDotID <=1:
-                        print("heat hand")
                     token.therIntensity = INTENSITY
-                    print(f"INTENSITY: {INTENSITY}")
                 else:
                     # print("Heat controlling...")
                     token.therIntensity = 0.1
+                if isHead:
+                    print(f"INTENSITY: {INTENSITY}")
             else:
 
                 # token.therIntensity = 0
                 targetDot.heatTimer = max(0, targetDot.heatTimer - (time.time() - targetDot.lastTime))
 
-                print("Cooling down...")
+                # print("Cooling down...")
                 if targetDot.heatTimer > 0:
                     token.therIntensity = -1
                 else:

@@ -297,7 +297,7 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 leftVib = 0.2* Config.VIB_OUT_SCALE
 
             trueVibLeft  = smooth_step(prev_left_vib,  leftVib,  ATTACK_ALPHA, RELEASE_ALPHA)
-            t0.vibIntensity  = trueVibLeft
+            # t0.vibIntensity  = trueVibLeft
             prev_left_vib = trueVibLeft
 
         if right_buffer and (time.time() - start_time) > Config.AUDIO_PLAYBACK_DELAY_S:
@@ -319,8 +319,19 @@ def Commander(stop_evt: Event, q_pres:Queue, q_vib:Queue, q_therm:Queue, q_cmd:Q
                 rightvib = 0.2* Config.VIB_OUT_SCALE
 
             trueVibRight  = smooth_step(prev_right_vib,  rightvib,  ATTACK_ALPHA, RELEASE_ALPHA)
-            t1.vibIntensity  = trueVibRight
+            # t1.vibIntensity  = trueVibRight
             prev_right_vib = trueVibRight
+
+        if t0.ledList != [[0,0,0]]*8:
+            t0.heatup = True
+            print("HEAT!!!")
+        else:
+            t0.heatup = False
+
+        if t1.ledList != [[0,0,0]]*8:
+            t1.heatup = True
+        else: 
+            t1.heatup = False
 
 
         # print(t2.ledList)
