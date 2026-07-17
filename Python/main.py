@@ -33,8 +33,8 @@ def choose_port(default=None):
 
 def main():
     baud = 115200
-    port = choose_port()
-    print(f"Starting connection at {port} {baud}…")
+    # port = choose_port()
+    # print(f"Starting connection at {port} {baud}…")
 
     q_audio_playback = Queue()
     q_audio_vib = Queue()
@@ -60,8 +60,8 @@ def main():
 
     if Config.RECORD:
         p_recorder = Process(target=Recorder, args=(stop_evt, q_pres_record,), daemon=True)
-    if not Config.PLAY_RECORD:
-        p_serial = Process(target=read_from_serial, args=(stop_evt, q_pres, q_pres_record, port, baud,), daemon=True)
+    # if not Config.PLAY_RECORD:
+    #     p_serial = Process(target=read_from_serial, args=(stop_evt, q_pres, q_pres_record, port, baud,), daemon=True)
     # p_socket = Process(target=SocketToUnity, args=(stop_evt, q_unity, 1688, ), daemon=True)
     # p_wsocket = Process(target=SocketToUnity, args=(stop_evt, q_wav, 1689, ), daemon=True)
     
@@ -76,8 +76,8 @@ def main():
     # p_serial.start()
     if Config.RECORD:
         p_recorder.start()
-    if not Config.PLAY_RECORD:
-        p_serial.start()
+    # if not Config.PLAY_RECORD:
+    #     p_serial.start()
     # p_socket.start()
     # p_wsocket.start()
 
@@ -109,7 +109,7 @@ def main():
     finally:
         
         stop_evt.set()
-        p_serial.join(timeout=2)
+        # p_serial.join(timeout=2)
         p_commander.join()
         p_worker.join()
         p_audiocapture.join()

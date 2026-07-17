@@ -55,8 +55,8 @@ class DataFeelCenter():
             INTENSITY = 1.0
         else:
             HEAT_TIME = Config.HEAT_TIME
-            INTENSITY = 1.0 
-            # INTENSITY = 0.8
+            # INTENSITY = 1.0 
+            INTENSITY = 0.6
 
         if token.heatup is not None:
             if token.heatup:
